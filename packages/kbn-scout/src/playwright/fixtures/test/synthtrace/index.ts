@@ -42,8 +42,8 @@ export const synthtraceFixture = coreWorkerFixtures.extend<SynthtraceFixture>({
     target.password = password;
 
     const apmKibanaClient = new ApmSynthtraceKibanaClient({
-      logger: createLogger(LogLevel.info),
-      target: url,
+      logger,
+      target: target.href,
     });
 
     const version = await apmKibanaClient.fetchLatestApmPackageVersion();
