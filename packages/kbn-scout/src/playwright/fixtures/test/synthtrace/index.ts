@@ -34,13 +34,16 @@ export interface SynthtraceFixture {
 }
 
 export const synthtraceFixture = coreWorkerFixtures.extend<SynthtraceFixture>({
-  synthtraceEsClient: async ({ esClient, kbnClient }, use) => {
+  synthtraceEsClient: async ({ esClient, config, kbnUrl }, use) => {
     const logger = createLogger(LogLevel.info);
+    const { username, password } = config.auth;
+    const target = new URL(kbnUrl.toString());
+    target.username = username;
+    target.password = password;
 
     const apmKibanaClient = new ApmSynthtraceKibanaClient({
       logger: createLogger(LogLevel.info),
-      // TODO: where can we retrieve the credentials from?
-      target: 'http://elastic:changeme@localhost:5620',
+      target: url,
     });
 
     const version = await apmKibanaClient.fetchLatestApmPackageVersion();
