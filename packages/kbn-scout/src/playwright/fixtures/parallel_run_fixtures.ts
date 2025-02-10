@@ -22,8 +22,9 @@ import {
   browserAuthFixture,
   pageObjectsParallelFixture,
   validateTagsFixture,
+  synthtraceFixture,
 } from './test';
-import type { BrowserAuthFixture, ScoutPage, PageObjects } from './test';
+import type { BrowserAuthFixture, ScoutPage, PageObjects, SynthtraceFixture } from './test';
 
 export const scoutParallelFixtures = mergeTests(
   // worker scope fixtures
@@ -33,13 +34,16 @@ export const scoutParallelFixtures = mergeTests(
   browserAuthFixture,
   scoutPageParallelFixture,
   pageObjectsParallelFixture,
-  validateTagsFixture
+  validateTagsFixture,
+  synthtraceFixture
 );
 
 export interface ScoutParallelTestFixtures {
   browserAuth: BrowserAuthFixture;
   page: ScoutPage;
   pageObjects: PageObjects;
+  synthtraceEsClient: SynthtraceFixture['synthtraceEsClient'];
+  synthtraceOtelEsClient: SynthtraceFixture['synthtraceOtelEsClient'];
 }
 
 export interface ScoutParallelWorkerFixtures {

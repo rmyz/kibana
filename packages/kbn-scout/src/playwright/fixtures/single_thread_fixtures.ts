@@ -26,6 +26,8 @@ import {
   BrowserAuthFixture,
   ScoutPage,
   PageObjects,
+  synthtraceFixture,
+  SynthtraceFixture,
 } from './test';
 export type { PageObjects, ScoutPage } from './test';
 
@@ -38,13 +40,16 @@ export const scoutFixtures = mergeTests(
   browserAuthFixture,
   scoutPageFixture,
   pageObjectsFixture,
-  validateTagsFixture
+  validateTagsFixture,
+  synthtraceFixture
 );
 
 export interface ScoutTestFixtures {
   browserAuth: BrowserAuthFixture;
   page: ScoutPage;
   pageObjects: PageObjects;
+  synthtraceEsClient: SynthtraceFixture['synthtraceEsClient'];
+  synthtraceOtelEsClient: SynthtraceFixture['synthtraceOtelEsClient'];
 }
 
 export interface ScoutWorkerFixtures {
