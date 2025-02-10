@@ -41,9 +41,14 @@ export const synthtraceFixture = coreWorkerFixtures.extend<SynthtraceFixture>({
     target.username = username;
     target.password = password;
 
+    let targetHref = target.href;
+    // remove trailing slash to prevent errors in ApmSynthtraceKibanaClient
+    if (targetHref.endsWith('/')) {
+      targetHref = targetHref.slice(0, -1);
+    }
     const apmKibanaClient = new ApmSynthtraceKibanaClient({
       logger,
-      target: target.href,
+      target: targetHref,
     });
 
     const version = await apmKibanaClient.fetchLatestApmPackageVersion();
@@ -69,7 +74,7 @@ export const synthtraceFixture = coreWorkerFixtures.extend<SynthtraceFixture>({
     await use({ index, clean });
 
     // cleanup function after all tests have ran
-    await synthtraceEsClient.clean();
+    await clean();
   },
   synthtraceOtelEsClient: async ({ esClient }, use, testInfo) => {
     const logger = createLogger(LogLevel.info);
@@ -94,6 +99,6 @@ export const synthtraceFixture = coreWorkerFixtures.extend<SynthtraceFixture>({
     await use({ index, clean });
 
     // cleanup function after all tests have ran
-    await synthtraceOtelEsClient.clean();
+    await clean();
   },
 });
