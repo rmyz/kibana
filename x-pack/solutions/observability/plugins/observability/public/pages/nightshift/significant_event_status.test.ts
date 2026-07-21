@@ -19,7 +19,9 @@ import {
   isResolvedStatus,
 } from './significant_event_status';
 
-const mockEvent = (overrides: Partial<SignificantEvent> = {}): SignificantEvent =>
+const mockEvent = (
+  overrides: Partial<SignificantEvent> & { updated_at?: string } = {}
+): SignificantEvent =>
   ({
     '@timestamp': '2026-01-01T00:00:00.000Z',
     event_id: 'evt-1',

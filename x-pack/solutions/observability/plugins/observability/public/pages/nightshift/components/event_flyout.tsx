@@ -104,7 +104,7 @@ export function EventFlyout({ event, onClose, onChatClick }: EventFlyoutProps): 
                 {i18n.translate(
                   'xpack.observability.nightshift.flyout.badge.significantEventLabel',
                   {
-                    defaultMessage: 'Significant event',
+                    defaultMessage: 'Significant Event',
                   }
                 )}
               </span>
