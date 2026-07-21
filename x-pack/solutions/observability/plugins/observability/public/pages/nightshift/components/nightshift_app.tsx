@@ -21,7 +21,6 @@ import {
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
-import { SIGNIFICANT_EVENT_ATTACHMENT_TYPE } from '@kbn/significant-events-plugin/common';
 import { BlastRadiusEntities } from './blast_radius_entities';
 import { EventFlyout } from './event_flyout';
 import { NightshiftTitle } from './nightshift_title';
@@ -35,7 +34,7 @@ import {
   getResolvedEvents,
 } from '../significant_event_status';
 import { buildBlastRadiusChips, filterEventsByBlastRadiusChip } from '../blast_radius_chips';
-import { formatChatAttachmentDescription } from '../chat_attachment_description';
+import { buildNewSignificantEventChatOptions } from '../open_significant_event_in_chat';
 
 // Kept in the URL so a refresh or a shared link restores the open flyout.
 const SELECTED_EVENT_QUERY_PARAM = 'eventUuid';
@@ -52,7 +51,6 @@ export function NightshiftApp(): React.ReactElement {
   const { data, error: eventsError, isLoading, refetch } = useFetchSignificantEvents();
 
   const events = useMemo(() => data?.hits ?? [], [data]);
-  const totalCount = data?.total;
 
   // Derived from the freshest fetched list (not a click-time snapshot), so
   // background refetches keep the open flyout current.
@@ -72,23 +70,7 @@ export function NightshiftApp(): React.ReactElement {
 
   const handleChatClick = useCallback(
     (event: SignificantEvent) => {
-      agentBuilder?.openChat({
-        newConversation: true,
-        autoSendInitialMessage: true,
-        initialMessage: i18n.translate('xpack.observability.nightshift.explainEventPrompt', {
-          defaultMessage: 'Explain this significant event: {significantEventName}',
-          values: { significantEventName: event.title },
-        }),
-        attachments: [
-          {
-            id: event.event_uuid,
-            type: SIGNIFICANT_EVENT_ATTACHMENT_TYPE,
-            origin: event.event_id,
-            description: formatChatAttachmentDescription('Significant Event', event.title),
-            data: event,
-          },
-        ],
-      });
+      agentBuilder?.openChat(buildNewSignificantEventChatOptions(event));
     },
     [agentBuilder]
   );
@@ -176,7 +158,6 @@ export function NightshiftApp(): React.ReactElement {
 
   const hasEvents = shownEvents.length > 0;
   const hasNeedsAction = needsActionEvents.length > 0;
-  const isTruncated = typeof totalCount === 'number' && totalCount > events.length;
 
   // Only treat a load failure as fatal when there is nothing to show; a failed
   // background refetch that still has cached data degrades to a non-blocking warning.
@@ -227,9 +208,6 @@ export function NightshiftApp(): React.ReactElement {
         </EuiFlexItem>
       ) : !hasEvents ? (
         <>
-          {isTruncated && (
-            <TruncationNotice count={events.length} total={totalCount ?? events.length} />
-          )}
           <EuiFlexItem
             css={css`
               margin-top: ${euiTheme.size.l};
@@ -320,10 +298,6 @@ export function NightshiftApp(): React.ReactElement {
             selectedEntity={activeBlastRadiusChip}
           />
 
-          {isTruncated && (
-            <TruncationNotice count={events.length} total={totalCount ?? events.length} />
-          )}
-
           <EuiFlexItem
             css={css`
               margin-top: ${euiTheme.size.l};
@@ -370,32 +344,9 @@ export function NightshiftApp(): React.ReactElement {
           key={selectedEvent.event_uuid}
           event={selectedEvent}
           onClose={handleFlyoutClose}
-          onChatClick={onChatClick}
         />
       )}
     </EuiFlexGroup>
-  );
-}
-
-function TruncationNotice({ count, total }: { count: number; total: number }): React.ReactElement {
-  const { euiTheme } = useEuiTheme();
-
-  return (
-    <EuiFlexItem
-      css={css`
-        margin-top: ${euiTheme.size.m};
-      `}
-    >
-      <EuiText color="subdued" size="xs">
-        <p>
-          {i18n.translate('xpack.observability.nightshift.truncatedResultsDescription', {
-            defaultMessage:
-              'Showing {count} of {total} significant events. Open “Show all events” to see the rest.',
-            values: { count, total },
-          })}
-        </p>
-      </EuiText>
-    </EuiFlexItem>
   );
 }
 

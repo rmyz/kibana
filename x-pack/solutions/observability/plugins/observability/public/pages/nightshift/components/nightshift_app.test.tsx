@@ -344,17 +344,6 @@ describe('NightshiftApp', () => {
     );
   });
 
-  it('surfaces a truncation notice when more events exist than were fetched', () => {
-    setEvents({ events: [mockEvent()], total: 120 });
-    renderWithIntl();
-
-    expect(
-      screen.getByText(
-        'Showing 1 of 120 significant events. Open “Show all events” to see the rest.'
-      )
-    ).toBeInTheDocument();
-  });
-
   it('opens the event flyout when a row is clicked and closes it again', () => {
     setEvents({ events: [mockEvent({ title: 'Clickable event' })] });
     renderWithIntl();
@@ -384,14 +373,12 @@ describe('NightshiftApp', () => {
     expect(screen.queryByTestId('stubEventFlyout')).not.toBeInTheDocument();
   });
 
-  it('ranks blast radius chips by highest severity, not raw event count', () => {
+  it('ranks blast radius chips by event count descending', () => {
     setEvents({
       events: [
-        // "busy" has more events but all low severity.
         mockEvent({ event_id: '1', severity: '20-low', stream_names: ['busy'] }),
         mockEvent({ event_id: '2', severity: '20-low', stream_names: ['busy'] }),
         mockEvent({ event_id: '3', severity: '20-low', stream_names: ['busy'] }),
-        // "critical" has a single critical event and must sort first.
         mockEvent({ event_id: '4', severity: '80-critical', stream_names: ['critical'] }),
       ],
     });
@@ -401,6 +388,6 @@ describe('NightshiftApp', () => {
       container.querySelectorAll('[data-test-subj="blast-radius-chip"]')
     ).map((chip) => chip.getAttribute('aria-label'));
 
-    expect(chipLabels).toEqual(['critical: 1', 'busy: 3']);
+    expect(chipLabels).toEqual(['busy: 3', 'critical: 1']);
   });
 });

@@ -57,6 +57,27 @@ describe('blast_radius_chips', () => {
     ]);
   });
 
+  it('sorts blast radius chips by event count descending', () => {
+    const chips = buildBlastRadiusChips([
+      mockEvent({ event_id: '1', severity: '80-critical', stream_names: ['rare-critical'] }),
+      mockEvent({
+        event_id: '2',
+        event_uuid: 'uuid-2',
+        severity: '40-medium',
+        stream_names: ['popular', 'rare-critical'],
+      }),
+      mockEvent({
+        event_id: '3',
+        event_uuid: 'uuid-3',
+        severity: '40-medium',
+        stream_names: ['popular'],
+      }),
+    ]);
+
+    expect(chips.map(({ name }) => name)).toEqual(['popular', 'rare-critical']);
+    expect(chips[0].count).toBe(2);
+  });
+
   it('filters events by blast radius chip name', () => {
     const events = [
       mockEvent({

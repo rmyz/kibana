@@ -15,7 +15,12 @@ import type { SignificantEvent } from '@kbn/significant-events-schema';
 jest.mock('@kbn/investigation-output', () => ({
   // Avoid requireActual — it pulls a deep Kibana React graph that is brittle in unit tests.
   InvestigationOutput: () => null,
-  useInvestigationState: () => ({ status: 'complete', state: undefined, error: undefined }),
+  useInvestigationState: () => ({
+    status: 'complete',
+    state: undefined,
+    error: undefined,
+    conversationId: undefined,
+  }),
 }));
 
 jest.mock('../hooks/use_fetch_stream_features', () => ({
@@ -48,10 +53,13 @@ jest.mock('../hooks/use_fetch_event_lifecycle', () => ({
   }),
 }));
 
+const mockOpenChat = jest.fn();
+
 jest.mock('../../../utils/kibana_react', () => ({
   useKibana: () => ({
     services: {
       http: { get: jest.fn(), basePath: { prepend: (path: string) => path } },
+      agentBuilder: { openChat: mockOpenChat },
       charts: {
         theme: {
           useChartsBaseTheme: () => ({}),
@@ -86,6 +94,10 @@ const mockEvent: SignificantEvent = {
 };
 
 describe('EventFlyout', () => {
+  beforeEach(() => {
+    mockOpenChat.mockClear();
+  });
+
   const renderFlyout = (props: Partial<React.ComponentProps<typeof EventFlyout>> = {}) =>
     render(
       <I18nProvider>
@@ -118,18 +130,16 @@ describe('EventFlyout', () => {
     expect(screen.getAllByText(/Jul 10, 2026 @ \d{2}:\d{2}:\d{2}/).length).toBeGreaterThan(0);
   });
 
-  it('renders the footer chat button when onChatClick is provided', () => {
-    const onChatClick = jest.fn();
-    renderFlyout({ onChatClick });
-
-    fireEvent.click(screen.getByTestId('nightshiftEventFlyoutChatButton'));
-    expect(onChatClick).toHaveBeenCalledWith(mockEvent);
-  });
-
-  it('does not render the footer chat button without onChatClick', () => {
+  it('renders the footer chat button and opens a new chat when clicked', () => {
     renderFlyout();
 
-    expect(screen.queryByTestId('nightshiftEventFlyoutChatButton')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('nightshiftEventFlyoutChatButton'));
+    expect(mockOpenChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        newConversation: true,
+        initialMessage: expect.stringContaining(mockEvent.title),
+      })
+    );
   });
 
   it('renders the summary section with the summary text', () => {

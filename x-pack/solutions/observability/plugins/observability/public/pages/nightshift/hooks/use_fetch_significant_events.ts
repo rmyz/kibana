@@ -7,6 +7,7 @@
 
 import moment from 'moment';
 import { useQuery, type UseQueryResult } from '@kbn/react-query';
+import type { HttpSetup } from '@kbn/core/public';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
 import { useKibana } from '../../../utils/kibana_react';
 
@@ -22,14 +23,56 @@ interface PaginatedResponse<T> {
   total: number;
 }
 
-/**
- * The landing page shows an overnight triage summary, so it pulls a single
- * capped page of the most recent events rather than paginating. If a cluster
- * produces more than this in the window, `total` will exceed `hits.length` and
- * the UI can surface that the view is truncated.
- */
-const NIGHTSHIFT_EVENTS_PAGE_SIZE = 50;
+/** Server allows up to 1000 hits per page (`events` internal route). */
+export const NIGHTSHIFT_EVENTS_PAGE_SIZE = 1000;
 const NIGHTSHIFT_LOOKBACK_DAYS = 30;
+
+const fetchAllSignificantEvents = async ({
+  http,
+  signal,
+  from,
+  to,
+}: {
+  http: HttpSetup;
+  signal: AbortSignal | undefined;
+  from: string;
+  to: string;
+}): Promise<PaginatedResponse<SignificantEvent>> => {
+  const allHits: SignificantEvent[] = [];
+  let page = 1;
+  let total = 0;
+
+  while (true) {
+    const response = await http.get<PaginatedResponse<SignificantEvent>>(
+      '/internal/significant_events/events',
+      {
+        query: {
+          page,
+          perPage: NIGHTSHIFT_EVENTS_PAGE_SIZE,
+          from,
+          to,
+        },
+        signal,
+      }
+    );
+
+    allHits.push(...response.hits);
+    total = response.total;
+
+    if (allHits.length >= total || response.hits.length === 0) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return {
+    hits: allHits,
+    page: 1,
+    perPage: allHits.length,
+    total,
+  };
+};
 
 export const useFetchSignificantEvents = (): UseQueryResult<
   PaginatedResponse<SignificantEvent>,
@@ -40,15 +83,10 @@ export const useFetchSignificantEvents = (): UseQueryResult<
   return useQuery<PaginatedResponse<SignificantEvent>, Error>({
     queryKey: ['nightshift.significantEvents'],
     queryFn: async ({ signal }) => {
-      return http.get<PaginatedResponse<SignificantEvent>>('/internal/significant_events/events', {
-        query: {
-          page: 1,
-          perPage: NIGHTSHIFT_EVENTS_PAGE_SIZE,
-          from: moment().subtract(NIGHTSHIFT_LOOKBACK_DAYS, 'days').toISOString(),
-          to: moment().toISOString(),
-        },
-        signal,
-      });
+      const from = moment().subtract(NIGHTSHIFT_LOOKBACK_DAYS, 'days').toISOString();
+      const to = moment().toISOString();
+
+      return fetchAllSignificantEvents({ http, signal, from, to });
     },
   });
 };

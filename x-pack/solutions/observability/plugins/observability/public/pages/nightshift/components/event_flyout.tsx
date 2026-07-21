@@ -21,11 +21,11 @@ import {
   useEuiTheme,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import { AiButton } from '@kbn/shared-ux-ai-components';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
 import { DetectionFlyout } from './detection_flyout';
 import { DetectionsList } from './detections_list';
 import { EventInvestigation } from './event_investigation';
+import { EventFlyoutChatFooter } from './event_flyout_chat_footer';
 import { InvestigationStatusBadge } from './investigation_status_badge';
 import { TruncatableSummary } from './truncatable_summary';
 import { NightshiftMarkIcon } from './nightshift_mark_icon';
@@ -33,15 +33,16 @@ import { formatTimestamp } from '../format_timestamp';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
 import { findDetectionSignal } from '../resolve_detection_signal';
 import { isNeedsActionStatus } from '../significant_event_status';
+import { useKibana } from '../../../utils/kibana_react';
 
 export interface EventFlyoutProps {
   event: SignificantEvent;
   onClose: () => void;
-  onChatClick?: (event: SignificantEvent) => void;
 }
 
-export function EventFlyout({ event, onClose, onChatClick }: EventFlyoutProps): React.ReactElement {
+export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
+  const { agentBuilder } = useKibana().services;
   const [selectedDetectionId, setSelectedDetectionId] = useState<string>();
   const lifecycleQuery = useFetchEventLifecycle(event.event_uuid);
 
@@ -172,7 +173,7 @@ export function EventFlyout({ event, onClose, onChatClick }: EventFlyoutProps): 
         />
       )}
 
-      {onChatClick && (
+      {agentBuilder && (
         <EuiFlyoutFooter
           css={css`
             /* The design uses a plain footer instead of EUI's shaded one. */
@@ -180,21 +181,7 @@ export function EventFlyout({ event, onClose, onChatClick }: EventFlyoutProps): 
             border-top: ${euiTheme.border.thin};
           `}
         >
-          <EuiFlexGroup justifyContent="flexEnd" responsive={false}>
-            <EuiFlexItem grow={false}>
-              <AiButton
-                variant="base"
-                size="s"
-                iconType="productAgent"
-                data-test-subj="nightshiftEventFlyoutChatButton"
-                onClick={() => onChatClick(event)}
-              >
-                {i18n.translate('xpack.observability.nightshift.flyout.openInChatButtonLabel', {
-                  defaultMessage: 'Open in chat',
-                })}
-              </AiButton>
-            </EuiFlexItem>
-          </EuiFlexGroup>
+          <EventFlyoutChatFooter event={event} />
         </EuiFlyoutFooter>
       )}
     </EuiFlyout>

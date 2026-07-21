@@ -44,7 +44,7 @@ export const eventHasBlastRadiusChip = (event: SignificantEvent, chipName: strin
 
 /** Landing blast-radius pills from `blast_radius[]` on need-action events (falls back to `stream_names`). */
 export const buildBlastRadiusChips = (events: SignificantEvent[]): BlastRadiusChip[] => {
-  const byChip = new Map<string, { count: number; maxSeverity: string }>();
+  const byChip = new Map<string, number>();
 
   events.forEach((event) => {
     const blastRadius = event.blast_radius ?? [];
@@ -62,26 +62,13 @@ export const buildBlastRadiusChips = (events: SignificantEvent[]): BlastRadiusCh
         return;
       }
       seenOnEvent.add(key);
-      const current = byChip.get(name) ?? { count: 0, maxSeverity: '' };
-      byChip.set(name, {
-        count: current.count + 1,
-        maxSeverity: event.severity > current.maxSeverity ? event.severity : current.maxSeverity,
-      });
+      byChip.set(name, (byChip.get(name) ?? 0) + 1);
     });
   });
 
-  return Array.from(byChip, ([name, { count, maxSeverity }]) => ({
-    count,
-    maxSeverity,
-    name,
-  }))
-    .sort(
-      (first, second) =>
-        second.maxSeverity.localeCompare(first.maxSeverity) ||
-        second.count - first.count ||
-        first.name.localeCompare(second.name)
-    )
-    .map(({ count, name }) => ({ count, name }));
+  return Array.from(byChip, ([name, count]) => ({ count, name })).sort(
+    (first, second) => second.count - first.count || first.name.localeCompare(second.name)
+  );
 };
 
 export const filterEventsByBlastRadiusChip = (
