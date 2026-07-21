@@ -152,7 +152,7 @@ describe('NightshiftApp', () => {
     });
     const { container } = renderWithIntl();
 
-    expect(screen.getByRole('heading', { name: 'Needs action' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Need Action' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Resolved' })).toBeInTheDocument();
 
     const resolvedCard = container.querySelector<HTMLElement>(
@@ -175,7 +175,21 @@ describe('NightshiftApp', () => {
     const { container } = renderWithIntl();
     expect(screen.getAllByText('service-0').length).toBeGreaterThan(0);
     expect(container.querySelectorAll('[data-test-subj="blast-radius-chip"]')).toHaveLength(10);
-    expect(screen.queryByText(/\+\d+/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('blast-radius-show-more')).not.toBeInTheDocument();
+  });
+
+  it('collapses blast radius chips after ten with a show-more control', () => {
+    const streamNames = Array.from({ length: 12 }, (_, index) => `service-${index}`);
+    setEvents({
+      events: [mockEvent({ event_id: '1', stream_names: streamNames })],
+    });
+    const { container } = renderWithIntl();
+
+    expect(container.querySelectorAll('[data-test-subj="blast-radius-chip"]')).toHaveLength(10);
+    expect(screen.getByTestId('blast-radius-show-more')).toHaveTextContent('+2 more');
+
+    fireEvent.click(screen.getByTestId('blast-radius-show-more'));
+    expect(container.querySelectorAll('[data-test-subj="blast-radius-chip"]')).toHaveLength(12);
   });
 
   it('only builds blast radius chips from need-action entities, not resolved ones', () => {
@@ -205,9 +219,8 @@ describe('NightshiftApp', () => {
 
     expect(screen.getByText('Service B event')).toBeInTheDocument();
     expect(screen.queryByText('Service A event')).not.toBeInTheDocument();
-    // Summary counts track the active blast-radius filter so they match the visible rows.
-    expect(screen.getByRole('button', { name: 'Need action: 1' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Resolved' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Need action: 2' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Need Action' })).toBeInTheDocument();
   });
 
   it('clears the blast radius filter when the selected chip is clicked again', () => {
@@ -264,7 +277,7 @@ describe('NightshiftApp', () => {
     expect(
       screen.getByText('No significant events were detected. Nothing needs your attention.')
     ).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Needs action' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Need Action' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Resolved' })).not.toBeInTheDocument();
   });
 

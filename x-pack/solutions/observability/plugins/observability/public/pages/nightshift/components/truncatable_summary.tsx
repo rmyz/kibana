@@ -5,9 +5,11 @@
  * 2.0.
  */
 
+import { css } from '@emotion/react';
 import React, { useCallback, useMemo, useState } from 'react';
-import { EuiLink, EuiText } from '@elastic/eui';
+import { EuiLink, EuiText, useEuiTheme } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+import { SummaryInlineCodeText } from '../summary_inline_code';
 
 const DEFAULT_MAX_SUMMARY_LENGTH = 300;
 
@@ -24,6 +26,7 @@ export function TruncatableSummary({
   testSubj,
   toggleTestSubj,
 }: TruncatableSummaryProps): React.ReactElement {
+  const { euiTheme } = useEuiTheme();
   const [expanded, setExpanded] = useState(false);
 
   // Code points, not UTF-16 units, so truncation cannot split an emoji in half.
@@ -38,12 +41,26 @@ export function TruncatableSummary({
 
   return (
     <>
-      <EuiText size="s" data-test-subj={testSubj}>
-        <p>{displaySummary}</p>
+      <EuiText
+        size="s"
+        data-test-subj={testSubj}
+        css={css`
+          line-height: 1.5;
+        `}
+      >
+        <SummaryInlineCodeText text={displaySummary} />
       </EuiText>
       {isSummaryLong && (
         // eslint-disable-next-line @elastic/eui/require-href-for-link
-        <EuiLink data-test-subj={toggleTestSubj} onClick={toggleSummary}>
+        <EuiLink
+          data-test-subj={toggleTestSubj}
+          onClick={toggleSummary}
+          css={css`
+            display: inline-block;
+            margin-top: ${euiTheme.size.s};
+            transition: opacity 200ms ease;
+          `}
+        >
           {expanded
             ? i18n.translate('xpack.observability.nightshift.flyout.showLessButtonText', {
                 defaultMessage: 'Show less',

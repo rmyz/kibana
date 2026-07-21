@@ -187,7 +187,7 @@ export function DetectionFlyout({
             <>
               <FlyoutSectionTitle>
                 {i18n.translate('xpack.observability.nightshift.detectionFlyout.entitiesTitle', {
-                  defaultMessage: 'Associated entities',
+                  defaultMessage: 'Impacted entities',
                 })}
               </FlyoutSectionTitle>
               <EuiSpacer size="s" />
@@ -206,7 +206,7 @@ export function DetectionFlyout({
                   size="s"
                   title={i18n.translate(
                     'xpack.observability.nightshift.detectionFlyout.entitiesErrorTitle',
-                    { defaultMessage: 'Unable to load associated entities' }
+                    { defaultMessage: 'Unable to load impacted entities' }
                   )}
                 >
                   <EuiButtonEmpty

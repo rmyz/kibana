@@ -22,7 +22,7 @@ import {
 import { i18n } from '@kbn/i18n';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
 import { SIGNIFICANT_EVENT_ATTACHMENT_TYPE } from '@kbn/significant-events-plugin/common';
-import { BlastRadiusEntities, type BlastRadiusEntity } from './blast_radius_entities';
+import { BlastRadiusEntities } from './blast_radius_entities';
 import { EventFlyout } from './event_flyout';
 import { NightshiftTitle } from './nightshift_title';
 import { SignificantEventList } from './significant_event_list';
@@ -30,11 +30,11 @@ import { SignificantEventStatuses } from './significant_event_statuses';
 import { useKibana } from '../../../utils/kibana_react';
 import { useFetchSignificantEvents } from '../hooks/use_fetch_significant_events';
 import {
-  bySeverityDesc,
-  filterEventsByStream,
+  byCriticalityAndUpdatedAtDesc,
   getNeedsActionEvents,
   getResolvedEvents,
 } from '../significant_event_status';
+import { buildBlastRadiusChips, filterEventsByBlastRadiusChip } from '../blast_radius_chips';
 import { formatChatAttachmentDescription } from '../chat_attachment_description';
 
 // Kept in the URL so a refresh or a shared link restores the open flyout.
@@ -111,10 +111,13 @@ export function NightshiftApp(): React.ReactElement {
 
   // Highest-severity events first so critical items are never buried below older, lower-impact ones.
   const needsActionEvents = useMemo(
-    () => getNeedsActionEvents(events).sort(bySeverityDesc),
+    () => getNeedsActionEvents(events).sort(byCriticalityAndUpdatedAtDesc),
     [events]
   );
-  const resolvedEvents = useMemo(() => getResolvedEvents(events).sort(bySeverityDesc), [events]);
+  const resolvedEvents = useMemo(
+    () => getResolvedEvents(events).sort(byCriticalityAndUpdatedAtDesc),
+    [events]
+  );
 
   // The events we display drive the empty state.
   const shownEvents = useMemo(
@@ -122,49 +125,20 @@ export function NightshiftApp(): React.ReactElement {
     [needsActionEvents, resolvedEvents]
   );
 
-  // Blast radius surfaces only entities that still need action — resolved events are
-  // not actionable, so their streams must not appear as chips. Because every chip comes
-  // from a needs-action event, selecting one can never filter that list down to nothing.
-  // Chips rank by the highest severity seen on the stream (then event count, then
-  // name), so a single critical stream sorts above several low-severity ones.
-  const blastRadius = useMemo<BlastRadiusEntity[]>(() => {
-    const byStream = new Map<string, { count: number; maxSeverity: string }>();
+  // Blast radius pills come from each event's `blast_radius[]` (stream_names only when absent).
+  const blastRadius = useMemo(() => buildBlastRadiusChips(needsActionEvents), [needsActionEvents]);
 
-    needsActionEvents.forEach(({ severity, stream_names: streamNames }) => {
-      (streamNames ?? []).forEach((name) => {
-        const current = byStream.get(name) ?? { count: 0, maxSeverity: '' };
-        byStream.set(name, {
-          count: current.count + 1,
-          maxSeverity: severity > current.maxSeverity ? severity : current.maxSeverity,
-        });
-      });
-    });
-
-    return Array.from(byStream, ([name, { count, maxSeverity }]) => ({
-      count,
-      maxSeverity,
-      name,
-    }))
-      .sort(
-        (first, second) =>
-          second.maxSeverity.localeCompare(first.maxSeverity) ||
-          second.count - first.count ||
-          first.name.localeCompare(second.name)
-      )
-      .map(({ count, name }) => ({ count, name }));
-  }, [needsActionEvents]);
-
-  const activeStreamName = blastRadius.some(({ name }) => name === selectedStreamName)
+  const activeBlastRadiusChip = blastRadius.some(({ name }) => name === selectedStreamName)
     ? selectedStreamName
     : undefined;
 
   const visibleNeedsActionEvents = useMemo(
-    () => filterEventsByStream(needsActionEvents, activeStreamName),
-    [needsActionEvents, activeStreamName]
+    () => filterEventsByBlastRadiusChip(needsActionEvents, activeBlastRadiusChip),
+    [needsActionEvents, activeBlastRadiusChip]
   );
   const visibleResolvedEvents = useMemo(
-    () => filterEventsByStream(resolvedEvents, activeStreamName),
-    [resolvedEvents, activeStreamName]
+    () => filterEventsByBlastRadiusChip(resolvedEvents, activeBlastRadiusChip),
+    [resolvedEvents, activeBlastRadiusChip]
   );
 
   const selectedEventVisible = useMemo(() => {
@@ -172,14 +146,12 @@ export function NightshiftApp(): React.ReactElement {
       return false;
     }
     return (
-      filterEventsByStream(needsActionEvents, activeStreamName).some(
+      needsActionEvents.some(
         ({ event_uuid: eventUuid }) => eventUuid === selectedEvent.event_uuid
       ) ||
-      filterEventsByStream(resolvedEvents, activeStreamName).some(
-        ({ event_uuid: eventUuid }) => eventUuid === selectedEvent.event_uuid
-      )
+      resolvedEvents.some(({ event_uuid: eventUuid }) => eventUuid === selectedEvent.event_uuid)
     );
-  }, [activeStreamName, needsActionEvents, resolvedEvents, selectedEvent]);
+  }, [needsActionEvents, resolvedEvents, selectedEvent]);
 
   useEffect(() => {
     if (selectedEventUuid && !selectedEvent && !isLoading) {
@@ -190,18 +162,20 @@ export function NightshiftApp(): React.ReactElement {
     setEventNotFound(false);
   }, [handleFlyoutClose, isLoading, selectedEvent, selectedEventUuid]);
 
-  useEffect(() => {
-    if (selectedEvent && activeStreamName && !selectedEventVisible) {
-      handleFlyoutClose();
-    }
-  }, [activeStreamName, handleFlyoutClose, selectedEvent, selectedEventVisible]);
-
   const scrollToSection = (sectionRef: React.RefObject<HTMLElement>) => {
     sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const scrollToNeedsAction = useCallback(() => {
+    scrollToSection(needsActionSectionRef);
+  }, []);
+
+  const scrollToResolved = useCallback(() => {
+    scrollToSection(resolvedSectionRef);
+  }, []);
+
   const hasEvents = shownEvents.length > 0;
-  const hasNeedsAction = visibleNeedsActionEvents.length > 0;
+  const hasNeedsAction = needsActionEvents.length > 0;
   const isTruncated = typeof totalCount === 'number' && totalCount > events.length;
 
   // Only treat a load failure as fatal when there is nothing to show; a failed
@@ -216,9 +190,8 @@ export function NightshiftApp(): React.ReactElement {
       gutterSize="none"
       responsive={false}
       css={css`
-        box-sizing: border-box;
+        background: ${euiTheme.colors.backgroundBaseSubdued};
         margin-top: ${euiTheme.size.l};
-        min-height: max-content;
         padding: ${euiTheme.size.xxl} 0 calc(${euiTheme.size.xxl} * 1.5);
       `}
     >
@@ -333,10 +306,10 @@ export function NightshiftApp(): React.ReactElement {
           )}
 
           <SignificantEventStatuses
-            needsActionCount={visibleNeedsActionEvents.length}
-            onNeedsActionClick={() => scrollToSection(needsActionSectionRef)}
-            onResolvedClick={() => scrollToSection(resolvedSectionRef)}
-            resolvedCount={visibleResolvedEvents.length}
+            needsActionCount={needsActionEvents.length}
+            onNeedsActionClick={scrollToNeedsAction}
+            onResolvedClick={scrollToResolved}
+            resolvedCount={resolvedEvents.length}
           />
 
           <BlastRadiusEntities
@@ -344,7 +317,7 @@ export function NightshiftApp(): React.ReactElement {
             onSelect={(name) => {
               setSelectedStreamName((current) => (current === name ? undefined : name));
             }}
-            selectedEntity={activeStreamName}
+            selectedEntity={activeBlastRadiusChip}
           />
 
           {isTruncated && (
@@ -357,7 +330,7 @@ export function NightshiftApp(): React.ReactElement {
             `}
           >
             <EuiFlexGroup direction="column" gutterSize="l" responsive={false}>
-              {visibleNeedsActionEvents.length > 0 && (
+              {needsActionEvents.length > 0 && (
                 <EuiFlexItem>
                   <SignificantEventList
                     events={visibleNeedsActionEvents}
@@ -367,12 +340,12 @@ export function NightshiftApp(): React.ReactElement {
                     selectedEventUuid={selectedEventUuid}
                     statusColor="danger"
                     title={i18n.translate('xpack.observability.nightshift.list.needsActionTitle', {
-                      defaultMessage: 'Needs action',
+                      defaultMessage: 'Need Action',
                     })}
                   />
                 </EuiFlexItem>
               )}
-              {visibleResolvedEvents.length > 0 && (
+              {resolvedEvents.length > 0 && (
                 <EuiFlexItem>
                   <SignificantEventList
                     events={visibleResolvedEvents}

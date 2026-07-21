@@ -9,7 +9,7 @@ import type { SignificantEvent, SignificantEventStatus } from '@kbn/significant-
 import {
   NEEDS_ACTION_STATUSES,
   RESOLVED_STATUSES,
-  bySeverityDesc,
+  byCriticalityAndUpdatedAtDesc,
   filterEventsByStream,
   getNeedsActionEvents,
   getResolvedEvents,
@@ -78,7 +78,7 @@ describe('significant_event_status', () => {
     expect(filterEventsByStream(events, 'service-b').map(({ event_id: id }) => id)).toEqual(['2']);
   });
 
-  it('sorts by descending severity, breaking ties on recency', () => {
+  it('sorts by descending criticality, breaking ties on updated_at', () => {
     const events = [
       mockEvent({
         event_id: 'low',
@@ -93,11 +93,12 @@ describe('significant_event_status', () => {
       mockEvent({
         event_id: 'newer',
         severity: '60-high',
+        updated_at: '2026-01-03T00:00:00.000Z',
         '@timestamp': '2026-01-02T00:00:00.000Z',
       }),
     ];
 
-    expect([...events].sort(bySeverityDesc).map(({ event_id: id }) => id)).toEqual([
+    expect([...events].sort(byCriticalityAndUpdatedAtDesc).map(({ event_id: id }) => id)).toEqual([
       'newer',
       'high',
       'low',

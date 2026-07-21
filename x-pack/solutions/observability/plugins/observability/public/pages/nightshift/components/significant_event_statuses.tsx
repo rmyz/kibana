@@ -7,7 +7,15 @@
 
 import { css } from '@emotion/react';
 import React from 'react';
-import { EuiAvatar, EuiFlexGroup, EuiFlexItem, EuiPanel, EuiText, useEuiTheme } from '@elastic/eui';
+import {
+  EuiAvatar,
+  EuiFlexGroup,
+  EuiFlexItem,
+  EuiPanel,
+  EuiText,
+  euiShadowHover,
+  useEuiTheme,
+} from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 
 type SignificantEventStatusGroup = 'needsAction' | 'resolved';
@@ -27,9 +35,9 @@ function SignificantEventStatusCard({
   status,
   testSubj,
 }: SignificantEventStatusCardProps) {
-  const { euiTheme } = useEuiTheme();
+  const euiThemeContext = useEuiTheme();
+  const { euiTheme } = euiThemeContext;
   const isNeedsAction = status === 'needsAction';
-  // The card's only action is to scroll to its list, so it is inert when the list is empty.
   const isInteractive = count > 0;
 
   return (
@@ -39,30 +47,28 @@ function SignificantEventStatusCard({
         border: ${euiTheme.border.thin};
         border-radius: ${euiTheme.size.s};
         box-sizing: border-box;
-        overflow: hidden;
         padding: ${euiTheme.size.m};
 
         ${isInteractive
           ? css`
               && {
-                transition: background-color ${euiTheme.animation.fast} ease,
-                  border-color ${euiTheme.animation.fast} ease;
-              }
-
-              &&:hover {
-                background: ${euiTheme.colors.backgroundBaseInteractiveHover};
-                border-color: ${euiTheme.colors.borderInteractiveFormsHoverPlain};
                 box-shadow: none;
+                cursor: pointer;
                 transform: none;
+                transition: box-shadow 280ms ease, background-color 280ms ease,
+                  border-color 280ms ease;
               }
 
-              /* The cards only scroll on click, so suppress EUI's focus shadow/transform
-                 (which otherwise leaves a persistent "active" look) and show a focus ring
-                 for keyboard users only. */
+              &&:hover,
               &&:focus {
-                box-shadow: none;
-                outline: none;
+                background: ${euiTheme.colors.backgroundBasePlain};
+                border-color: ${euiTheme.border.color};
                 transform: none;
+                ${euiShadowHover(euiThemeContext, 's')}
+              }
+
+              &&:focus {
+                outline: none;
               }
 
               &&:focus-visible {
@@ -76,8 +82,6 @@ function SignificantEventStatusCard({
       hasBorder={false}
       hasShadow={false}
       onClick={isInteractive ? onClick : undefined}
-      // Prevent the card from taking focus on mouse click (it only scrolls, so a
-      // lingering focus ring is misleading). Keyboard focus via Tab is preserved.
       onMouseDown={
         isInteractive ? (mouseEvent: React.MouseEvent) => mouseEvent.preventDefault() : undefined
       }
@@ -123,7 +127,7 @@ function SignificantEventStatusCard({
                 css={css`
                   align-items: center;
                   color: ${euiTheme.colors.textHeading};
-                  display: flex;
+                  display: inline-flex;
                   font-size: calc(${euiTheme.size.xl} - ${euiTheme.size.xs});
                   font-weight: ${euiTheme.font.weight.medium};
                   height: ${euiTheme.size.xl};

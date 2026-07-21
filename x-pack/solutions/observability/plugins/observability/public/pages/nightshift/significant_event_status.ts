@@ -62,13 +62,22 @@ export const filterEventsByStream = (
     : events;
 
 /**
- * Highest-severity events first; see the `severity` field docs in the schema.
- * Ties break on recency (`@timestamp`) so equal-severity rows keep a stable order
- * between loads instead of shuffling.
+ * Recency for list ordering. Prefer `updated_at` when the API provides it on the event doc.
  */
-export const bySeverityDesc = (first: SignificantEvent, second: SignificantEvent): number =>
+export const getEventUpdatedAt = (event: SignificantEvent): string => {
+  const updatedAt = (event as SignificantEvent & { updated_at?: string }).updated_at;
+  return updatedAt ?? event['@timestamp'];
+};
+
+/**
+ * Landing lists sort by criticality (`severity`) then recency (`updated_at`, falling back to `@timestamp`).
+ */
+export const byCriticalityAndUpdatedAtDesc = (
+  first: SignificantEvent,
+  second: SignificantEvent
+): number =>
   second.severity.localeCompare(first.severity) ||
-  new Date(second['@timestamp']).getTime() - new Date(first['@timestamp']).getTime();
+  new Date(getEventUpdatedAt(second)).getTime() - new Date(getEventUpdatedAt(first)).getTime();
 
 export const getStatusColor = (status: SignificantEventStatus): StatusColor =>
   isResolvedStatus(status) ? 'success' : 'danger';

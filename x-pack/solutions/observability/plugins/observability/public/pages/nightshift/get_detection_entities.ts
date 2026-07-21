@@ -6,11 +6,13 @@
  */
 
 import type {
+  BlastRadiusEntry,
   Feature,
   LifecycleDetection,
   SignalEntry,
   SignificantEvent,
 } from '@kbn/significant-events-schema';
+import { getBlastRadiusEntryChipName, getFeatureDisplayName } from './blast_radius_chips';
 
 export interface DetectionEntityRef {
   key: string;
@@ -24,6 +26,37 @@ const MAX_STREAM_ENTITY_FALLBACK = 3;
 
 const featureMatchesCausal = (feature: Feature, featureId: string): boolean =>
   feature.uuid === featureId || feature.id === featureId;
+
+const findFeatureForEntry = (features: Feature[], featureId: string): Feature | undefined =>
+  features.find((candidate) => featureMatchesCausal(candidate, featureId));
+
+const resolveBlastRadiusEntityLabel = (
+  entry: BlastRadiusEntry,
+  feature: Feature | undefined
+): string => {
+  if (feature) {
+    return getFeatureDisplayName(feature);
+  }
+  return getBlastRadiusEntryChipName(entry);
+};
+
+const pushBlastRadiusEntities = (
+  event: SignificantEvent,
+  features: Feature[],
+  pushEntity: (entity: DetectionEntityRef) => void
+): void => {
+  for (const entry of event.blast_radius ?? []) {
+    const feature = findFeatureForEntry(features, entry.feature_id);
+    const streamName = feature?.stream_name ?? entry.stream_name;
+
+    pushEntity({
+      key: `${entry.type}:${entry.feature_id}`,
+      label: resolveBlastRadiusEntityLabel(entry, feature),
+      streamName,
+      feature,
+    });
+  }
+};
 
 export const toStreamFallbackFeature = (
   streamName: string,
@@ -73,7 +106,7 @@ export const getDetectionEntities = (
     if (feature) {
       pushEntity({
         key: feature.uuid,
-        label: feature.title ?? feature.id,
+        label: getFeatureDisplayName(feature),
         streamName: feature.stream_name,
         feature,
       });
@@ -93,13 +126,19 @@ export const getDetectionEntities = (
     return entities;
   }
 
+  pushBlastRadiusEntities(event, features, pushEntity);
+
+  if (entities.length > 0) {
+    return entities;
+  }
+
   for (const feature of streamFeatures) {
     if (feature.type !== 'entity') {
       continue;
     }
     pushEntity({
       key: feature.uuid,
-      label: feature.title ?? feature.id,
+      label: getFeatureDisplayName(feature),
       streamName: feature.stream_name,
       feature,
     });

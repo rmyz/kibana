@@ -6,9 +6,10 @@
  */
 
 import { css } from '@emotion/react';
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   EuiBadge,
+  EuiButtonEmpty,
   EuiFlexGroup,
   EuiFlexItem,
   EuiPanel,
@@ -17,6 +18,8 @@ import {
   useEuiTheme,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+
+export const MAX_VISIBLE_BLAST_RADIUS_ENTITIES = 10;
 
 export interface BlastRadiusEntity {
   count: number;
@@ -54,11 +57,24 @@ function BlastRadiusEntityButton({
           : euiTheme.border.thin};
         border-radius: ${euiTheme.size.base};
         box-sizing: border-box;
+        cursor: pointer;
         display: inline-flex;
         font: inherit;
+        gap: ${euiTheme.size.xs};
         height: ${euiTheme.size.xl};
         min-width: auto;
         padding: 0 calc(${euiTheme.size.xs} + ${euiTheme.size.xxs});
+        transition: background-color ${euiTheme.animation.fast} ease,
+          border-color ${euiTheme.animation.fast} ease;
+
+        &:hover {
+          background: ${isSelected
+            ? euiTheme.colors.backgroundBaseDanger
+            : euiTheme.colors.backgroundBaseInteractiveHover};
+          border-color: ${isSelected
+            ? euiTheme.colors.danger
+            : euiTheme.colors.borderInteractiveFormsHoverPlain};
+        }
 
         &:focus-visible {
           outline: ${euiTheme.border.width.thick} solid ${euiTheme.colors.primary};
@@ -71,13 +87,26 @@ function BlastRadiusEntityButton({
       <span
         css={css`
           align-items: center;
-          display: flex;
+          display: inline-flex;
           padding: 0 calc(${euiTheme.size.xs} + ${euiTheme.size.xxs});
         `}
       >
         <EuiText size="xs">{name}</EuiText>
       </span>
-      <EuiBadge color="danger">{count}</EuiBadge>
+      <EuiBadge
+        color="danger"
+        css={css`
+          flex-shrink: 0;
+
+          .euiBadge__content {
+            align-items: center;
+            display: flex;
+            line-height: 1;
+          }
+        `}
+      >
+        {count}
+      </EuiBadge>
     </button>
   );
 }
@@ -95,6 +124,16 @@ export function BlastRadiusEntities({
 }: BlastRadiusEntitiesProps): React.ReactElement | null {
   const { euiTheme } = useEuiTheme();
   const titleFontSize = useEuiFontSize('s');
+  const [expanded, setExpanded] = useState(false);
+
+  const hasOverflow = entities.length > MAX_VISIBLE_BLAST_RADIUS_ENTITIES;
+  const visibleEntities = useMemo(() => {
+    if (!hasOverflow || expanded) {
+      return entities;
+    }
+    return entities.slice(0, MAX_VISIBLE_BLAST_RADIUS_ENTITIES);
+  }, [entities, expanded, hasOverflow]);
+  const hiddenCount = entities.length - MAX_VISIBLE_BLAST_RADIUS_ENTITIES;
 
   if (entities.length === 0) {
     return null;
@@ -123,7 +162,7 @@ export function BlastRadiusEntities({
           `}
         >
           {i18n.translate('xpack.observability.nightshift.blastRadiusTitle', {
-            defaultMessage: 'Blast radius',
+            defaultMessage: 'Impacted entities',
           })}
         </span>
         <EuiFlexGroup
@@ -135,7 +174,7 @@ export function BlastRadiusEntities({
             gap: calc(${euiTheme.size.xs} + ${euiTheme.size.xxs});
           `}
         >
-          {entities.map(({ count, name }) => (
+          {visibleEntities.map(({ count, name }) => (
             <EuiFlexItem grow={false} key={name}>
               <BlastRadiusEntityButton
                 count={count}
@@ -145,6 +184,45 @@ export function BlastRadiusEntities({
               />
             </EuiFlexItem>
           ))}
+          {hasOverflow && !expanded && (
+            <EuiFlexItem
+              grow={false}
+              css={css`
+                margin-left: ${euiTheme.size.xxs};
+              `}
+            >
+              <EuiButtonEmpty
+                data-test-subj="blast-radius-show-more"
+                flush="left"
+                onClick={() => setExpanded(true)}
+                size="xs"
+              >
+                {i18n.translate('xpack.observability.nightshift.blastRadiusShowMore', {
+                  defaultMessage: '+{count} more',
+                  values: { count: hiddenCount },
+                })}
+              </EuiButtonEmpty>
+            </EuiFlexItem>
+          )}
+          {hasOverflow && expanded && (
+            <EuiFlexItem
+              grow={false}
+              css={css`
+                margin-left: ${euiTheme.size.xxs};
+              `}
+            >
+              <EuiButtonEmpty
+                data-test-subj="blast-radius-show-less"
+                flush="left"
+                onClick={() => setExpanded(false)}
+                size="xs"
+              >
+                {i18n.translate('xpack.observability.nightshift.blastRadiusShowLess', {
+                  defaultMessage: 'Show less',
+                })}
+              </EuiButtonEmpty>
+            </EuiFlexItem>
+          )}
         </EuiFlexGroup>
       </EuiPanel>
     </EuiFlexItem>

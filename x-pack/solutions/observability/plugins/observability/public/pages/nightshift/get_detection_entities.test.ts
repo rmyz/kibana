@@ -88,6 +88,41 @@ describe('getDetectionEntities', () => {
     expect(entities[0].feature).toEqual(feature);
   });
 
+  it('uses blast radius entries when causal features are absent', () => {
+    const feature = mockFeature({
+      id: 'elasticsearch-data',
+      title: 'Elasticsearch data nodes',
+      properties: { name: 'elasticsearch-data' },
+    });
+    const entities = getDetectionEntities(
+      mockEvent({
+        blast_radius: [
+          {
+            type: 'infrastructure',
+            feature_id: feature.uuid,
+            title: 'Elasticsearch data nodes',
+            stream_name: 'logs.web-frontend',
+          },
+        ],
+      }),
+      {
+        detection_id: 'det-1',
+        stream_name: 'logs.web-frontend',
+        change_point_type: 'spike',
+        '@timestamp': '2026-07-10T12:00:00Z',
+      },
+      [feature]
+    );
+
+    expect(entities).toEqual([
+      expect.objectContaining({
+        key: `infrastructure:${feature.uuid}`,
+        label: 'elasticsearch-data',
+        feature,
+      }),
+    ]);
+  });
+
   it('falls back to the detection stream name when no features are available', () => {
     const entities = getDetectionEntities(
       mockEvent(),

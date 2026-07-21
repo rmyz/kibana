@@ -54,7 +54,12 @@ export function SignificantEventList({
     <>
       <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
         <EuiFlexItem grow={false}>
-          <EuiTitle size="xs">
+          <EuiTitle
+            size="xs"
+            css={css`
+              font-weight: ${euiTheme.font.weight.medium};
+            `}
+          >
             <h2>{title}</h2>
           </EuiTitle>
         </EuiFlexItem>

@@ -8,11 +8,13 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '@kbn/i18n-react';
-import type { LifecycleDetection } from '@kbn/significant-events-schema';
+import type { LifecycleDetection, SignificantEvent } from '@kbn/significant-events-schema';
 import { DetectionsList } from './detections_list';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
+import { useFetchStreamFeatures } from '../hooks/use_fetch_stream_features';
 
 jest.mock('../hooks/use_fetch_event_lifecycle');
+jest.mock('../hooks/use_fetch_stream_features');
 
 jest.mock('../../../utils/kibana_react', () => ({
   useKibana: () => ({
@@ -29,6 +31,27 @@ jest.mock('../../../utils/kibana_react', () => ({
 }));
 
 const mockUseFetchEventLifecycle = useFetchEventLifecycle as jest.Mock;
+const mockUseFetchStreamFeatures = useFetchStreamFeatures as jest.Mock;
+
+const mockEvent = (overrides: Partial<SignificantEvent> = {}): SignificantEvent => ({
+  '@timestamp': '2026-07-10T12:00:00Z',
+  event_id: 'evt-001',
+  event_uuid: 'evt-uuid-001',
+  status: 'open',
+  stream_names: ['logs.web-frontend'],
+  title: 'Event',
+  summary: 'Summary',
+  severity: '60-high',
+  confidence: 0.9,
+  causal_features: [
+    {
+      feature_id: 'web-frontend',
+      name: 'web-frontend',
+      stream_name: 'logs.web-frontend',
+    },
+  ],
+  ...overrides,
+});
 
 const mockDetection = (overrides: Partial<LifecycleDetection> = {}): LifecycleDetection => ({
   detection_id: 'det-1',
@@ -51,13 +74,32 @@ function setLifecycle({
     isError,
     refetch,
   });
+  mockUseFetchStreamFeatures.mockReturnValue({
+    data: [
+      {
+        uuid: 'feat-web-frontend',
+        id: 'web-frontend',
+        stream_name: 'logs.web-frontend',
+        type: 'entity',
+        title: 'web-frontend',
+        description: '',
+        properties: { name: 'web-frontend' },
+        confidence: 90,
+      },
+    ],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  });
   return { refetch };
 }
+
+const defaultListEvent = mockEvent();
 
 const renderList = (props: Partial<React.ComponentProps<typeof DetectionsList>> = {}) =>
   render(
     <I18nProvider>
-      <DetectionsList eventUuid="evt-uuid-001" {...props} />
+      <DetectionsList event={defaultListEvent} eventUuid="evt-uuid-001" {...props} />
     </I18nProvider>
   );
 
@@ -105,6 +147,8 @@ describe('DetectionsList', () => {
     expect(screen.getByText('latency-p95-spike')).toBeInTheDocument();
     expect(screen.getByText('Spike')).toBeInTheDocument();
     expect(screen.getByText('Trend change')).toBeInTheDocument();
+    expect(screen.getAllByText('web-frontend').length).toBeGreaterThan(0);
+    expect(screen.queryByText('logs.web-frontend')).not.toBeInTheDocument();
   });
 
   it('sorts detections with the most recent first', () => {
@@ -182,6 +226,7 @@ describe('DetectionsList', () => {
       const [selectedDetectionId, setSelectedDetectionId] = React.useState<string>();
       return (
         <DetectionsList
+          event={defaultListEvent}
           eventUuid="evt-uuid-001"
           selectedDetectionId={selectedDetectionId}
           onDetectionClick={(detection) => setSelectedDetectionId(detection.detection_id)}

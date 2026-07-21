@@ -202,7 +202,7 @@ describe('DetectionFlyout', () => {
   it('hides the associated entities section without a stream name', () => {
     renderFlyout({ detection: { ...mockDetection, stream_name: undefined } });
 
-    expect(screen.queryByText('Associated entities')).not.toBeInTheDocument();
+    expect(screen.queryByText('Impacted entities')).not.toBeInTheDocument();
   });
 
   it('renders the trend section', () => {

@@ -28,6 +28,7 @@ import { DetectionsList } from './detections_list';
 import { EventInvestigation } from './event_investigation';
 import { InvestigationStatusBadge } from './investigation_status_badge';
 import { TruncatableSummary } from './truncatable_summary';
+import { NightshiftMarkIcon } from './nightshift_mark_icon';
 import { formatTimestamp } from '../format_timestamp';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
 import { findDetectionSignal } from '../resolve_detection_signal';
@@ -84,12 +85,29 @@ export function EventFlyout({ event, onClose, onChatClick }: EventFlyoutProps): 
           <h2>{event.title}</h2>
         </EuiTitle>
         <EuiSpacer size="s" />
-        <EuiFlexGroup gutterSize="s" wrap responsive={false} alignItems="center">
+        <EuiFlexGroup gutterSize="xs" wrap responsive={false} alignItems="center">
           <EuiFlexItem grow={false}>
-            <EuiBadge color="default">
-              {i18n.translate('xpack.observability.nightshift.flyout.badge.significantEventLabel', {
-                defaultMessage: 'Significant event',
-              })}
+            <EuiBadge
+              color="default"
+              css={css`
+                .euiBadge__text {
+                  align-items: center;
+                  display: inline-flex;
+                  flex-wrap: nowrap;
+                  gap: ${euiTheme.size.xs};
+                  line-height: 1;
+                }
+              `}
+            >
+              <NightshiftMarkIcon inline size={14} />
+              <span>
+                {i18n.translate(
+                  'xpack.observability.nightshift.flyout.badge.significantEventLabel',
+                  {
+                    defaultMessage: 'Significant event',
+                  }
+                )}
+              </span>
             </EuiBadge>
           </EuiFlexItem>
           {isNeedsActionStatus(event.status) && (
@@ -132,6 +150,7 @@ export function EventFlyout({ event, onClose, onChatClick }: EventFlyoutProps): 
         <EuiSpacer size="l" />
 
         <DetectionsList
+          event={event}
           eventUuid={event.event_uuid}
           lifecycleQuery={lifecycleQuery}
           selectedDetectionId={selectedDetectionId}

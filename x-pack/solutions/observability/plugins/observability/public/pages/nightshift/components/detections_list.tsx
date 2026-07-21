@@ -22,13 +22,20 @@ import {
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import type { UseQueryResult } from '@kbn/react-query';
-import type { LifecycleDetection, EventLifecycleResponse } from '@kbn/significant-events-schema';
+import type {
+  LifecycleDetection,
+  EventLifecycleResponse,
+  SignificantEvent,
+} from '@kbn/significant-events-schema';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
+import { useFetchStreamFeatures } from '../hooks/use_fetch_stream_features';
 import { formatTimestamp } from '../format_timestamp';
 import { getChangePointLabel } from '../change_point';
 import { ChangePointSparkline } from './change_point_visualization';
+import { getDetectionEntities } from '../get_detection_entities';
 
 export interface DetectionsListProps {
+  event: SignificantEvent;
   eventUuid: string;
   selectedDetectionId?: string;
   onDetectionClick?: (detection: LifecycleDetection) => void;
@@ -49,15 +56,25 @@ const parseTimestamp = (timestamp: string): number => {
 
 function DetectionCard({
   detection,
+  event,
   isSelected = false,
   onClick,
 }: {
   detection: LifecycleDetection;
+  event: SignificantEvent;
   isSelected?: boolean;
   onClick?: (detection: LifecycleDetection) => void;
 }) {
   const { euiTheme } = useEuiTheme();
   const changePointLabel = getChangePointLabel(detection.change_point_type);
+  const { data: streamFeatures = [] } = useFetchStreamFeatures(detection.stream_name);
+  const entityLabels = useMemo(() => {
+    const entities = getDetectionEntities(event, detection, streamFeatures);
+    if (entities.length > 0) {
+      return entities.map((entity) => entity.label);
+    }
+    return detection.stream_name ? [detection.stream_name] : [];
+  }, [detection, event, streamFeatures]);
 
   const handleClick = () => {
     onClick?.(detection);
@@ -127,21 +144,30 @@ function DetectionCard({
               </EuiText>
             </EuiFlexItem>
             <EuiFlexItem grow={false}>
-              <EuiText size="xs" color="subdued" textAlign="left">
-                {formatTimestamp(detection['@timestamp'])}
-              </EuiText>
-              <EuiSpacer size="s" />
-              <EuiFlexGroup gutterSize="xs" wrap responsive={false} alignItems="center">
+              <EuiFlexGroup
+                gutterSize="xs"
+                wrap
+                responsive={false}
+                alignItems="center"
+                css={css`
+                  row-gap: ${euiTheme.size.xs};
+                `}
+              >
+                <EuiFlexItem grow={false}>
+                  <EuiText size="xs" color="subdued" textAlign="left">
+                    {formatTimestamp(detection['@timestamp'])}
+                  </EuiText>
+                </EuiFlexItem>
                 {detection.change_point_type && (
                   <EuiFlexItem grow={false}>
                     <EuiBadge color="default">{changePointLabel}</EuiBadge>
                   </EuiFlexItem>
                 )}
-                {detection.stream_name && (
-                  <EuiFlexItem grow={false}>
-                    <EuiBadge color="hollow">{detection.stream_name}</EuiBadge>
+                {entityLabels.map((label) => (
+                  <EuiFlexItem grow={false} key={`${detection.detection_id}-${label}`}>
+                    <EuiBadge color="hollow">{label}</EuiBadge>
                   </EuiFlexItem>
-                )}
+                ))}
               </EuiFlexGroup>
             </EuiFlexItem>
           </EuiFlexGroup>
@@ -158,6 +184,7 @@ function DetectionCard({
 }
 
 export function DetectionsList({
+  event,
   eventUuid,
   selectedDetectionId,
   onDetectionClick,
@@ -254,6 +281,7 @@ export function DetectionsList({
               >
                 <DetectionCard
                   detection={detection}
+                  event={event}
                   isSelected={detection.detection_id === selectedDetectionId}
                   onClick={onDetectionClick}
                 />
