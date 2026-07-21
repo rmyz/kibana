@@ -211,7 +211,7 @@ export function EventFlyoutChatFooter({ event }: EventFlyoutChatFooterProps): Re
       <EuiFlexItem grow={false}>
         {inProgressTooltip ? (
           <EuiToolTip content={inProgressTooltip}>
-            <span>{button}</span>
+            <span tabIndex={0}>{button}</span>
           </EuiToolTip>
         ) : (
           button
