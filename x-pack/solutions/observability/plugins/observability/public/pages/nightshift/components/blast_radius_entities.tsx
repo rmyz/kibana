@@ -18,6 +18,7 @@ import {
   useEuiTheme,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+import { nightshiftInteractiveSurfaceTransition } from '../nightshift_transition';
 
 export const MAX_VISIBLE_BLAST_RADIUS_ENTITIES = 10;
 
@@ -64,8 +65,7 @@ function BlastRadiusEntityButton({
         height: ${euiTheme.size.xl};
         min-width: auto;
         padding: 0 calc(${euiTheme.size.xs} + ${euiTheme.size.xxs});
-        transition: background-color ${euiTheme.animation.fast} ease,
-          border-color ${euiTheme.animation.fast} ease;
+        transition: ${nightshiftInteractiveSurfaceTransition(euiTheme)};
 
         &:hover {
           background: ${isSelected

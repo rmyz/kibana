@@ -17,6 +17,7 @@ import {
   useEuiTheme,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+import { nightshiftStatusCardTransition } from '../nightshift_transition';
 
 type SignificantEventStatusGroup = 'needsAction' | 'resolved';
 
@@ -55,8 +56,7 @@ function SignificantEventStatusCard({
                 box-shadow: none;
                 cursor: pointer;
                 transform: none;
-                transition: box-shadow 280ms ease, background-color 280ms ease,
-                  border-color 280ms ease;
+                transition: ${nightshiftStatusCardTransition(euiTheme)};
               }
 
               &&:hover,

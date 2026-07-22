@@ -14,6 +14,7 @@ import { AiButtonIcon } from '@kbn/shared-ux-ai-components';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
 import { InvestigationStatusBadge } from './investigation_status_badge';
 import { getStatusColor } from '../significant_event_status';
+import { nightshiftBackgroundTransition } from '../nightshift_transition';
 
 export interface SignificantEventItemProps {
   event: SignificantEvent;
@@ -69,7 +70,7 @@ export function SignificantEventItem({
         ${onClick
           ? `
         cursor: pointer;
-        transition: background 0.15s;
+        transition: ${nightshiftBackgroundTransition(euiTheme)};
 
         &:hover {
           background: ${

@@ -10,6 +10,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { EuiLink, EuiText, useEuiTheme } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { InvestigationFormattedText } from './investigation_formatted_text';
+import { nightshiftOpacityTransition } from '../nightshift_transition';
 
 const DEFAULT_MAX_SUMMARY_LENGTH = 300;
 
@@ -58,7 +59,7 @@ export function TruncatableSummary({
           css={css`
             display: inline-block;
             margin-top: ${euiTheme.size.s};
-            transition: opacity 200ms ease;
+            transition: ${nightshiftOpacityTransition(euiTheme)};
           `}
         >
           {expanded

@@ -16,6 +16,7 @@ import {
 import { i18n } from '@kbn/i18n';
 import type { SignificantEventStatus } from '@kbn/significant-events-schema';
 import { getStatusLabel, isNeedsActionStatus } from '../significant_event_status';
+import { nightshiftReducedMotionStyles } from '../nightshift_transition';
 
 // Staggered offsets so the dots pulse in sequence (typing-indicator effect).
 const INVESTIGATING_DOT_DELAYS_MS = [0, 160, 320] as const;
@@ -62,15 +63,14 @@ function InvestigatingStatus({ label }: { label: string }) {
             <span
               key={delay}
               css={css`
-                animation: ${investigatingDotAnimation} 1.2s ease-in-out ${delay}ms infinite;
+                animation: ${investigatingDotAnimation} 1.4s ${euiTheme.animation.resistance}
+                  ${delay}ms infinite;
                 background: ${euiTheme.colors.mediumShade};
                 border-radius: 50%;
                 height: ${euiTheme.size.xs};
                 width: ${euiTheme.size.xs};
 
-                @media (prefers-reduced-motion: reduce) {
-                  animation: none;
-                }
+                ${nightshiftReducedMotionStyles}
               `}
             />
           ))}

@@ -34,6 +34,11 @@ import { InvestigationItemChatButton } from './investigation_item_chat_button';
 import { InvestigationCompleteStatus } from './investigation_status_badge';
 import { InvestigationFormattedText } from './investigation_formatted_text';
 import {
+  nightshiftBackgroundTransition,
+  nightshiftOpacityTransition,
+  nightshiftReducedMotionStyles,
+} from '../nightshift_transition';
+import {
   getConclusionBody,
   getInvestigationGoalText,
   getInvestigationHeadline,
@@ -167,7 +172,7 @@ function BlindSpotsList({ items }: { items: BlindSpotItem[] }): React.ReactEleme
               data-test-subj={`nightshiftInvestigationBlindSpotItem-${index}`}
               css={css`
                 background: ${euiTheme.colors.backgroundBasePlain};
-                transition: background ${euiTheme.animation.fast} ${euiTheme.animation.resistance};
+                transition: ${nightshiftBackgroundTransition(euiTheme)};
 
                 &:hover {
                   background: ${euiTheme.colors.backgroundBaseSubdued};
@@ -190,12 +195,13 @@ function BlindSpotsList({ items }: { items: BlindSpotItem[] }): React.ReactEleme
                   className={summaryRowActionClassName}
                   css={css`
                     opacity: 0;
-                    transition: opacity ${euiTheme.animation.fast} ${euiTheme.animation.resistance};
+                    transition: ${nightshiftOpacityTransition(euiTheme)};
 
                     @media (prefers-reduced-motion: reduce) {
                       opacity: 1;
-                      transition: none;
                     }
+
+                    ${nightshiftReducedMotionStyles}
                   `}
                 >
                   <InvestigationItemChatButton
@@ -285,12 +291,13 @@ function TryNextPanel({
             className={summaryRowActionClassName}
             css={css`
               opacity: 0;
-              transition: opacity ${euiTheme.animation.fast} ${euiTheme.animation.resistance};
+              transition: ${nightshiftOpacityTransition(euiTheme)};
 
               @media (prefers-reduced-motion: reduce) {
                 opacity: 1;
-                transition: none;
               }
+
+              ${nightshiftReducedMotionStyles}
             `}
           >
             <InvestigationItemChatButton

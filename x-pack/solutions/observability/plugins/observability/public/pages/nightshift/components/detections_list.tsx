@@ -34,6 +34,7 @@ import { useFormatTimestamp } from '../format_timestamp';
 import { getChangePointLabel } from '../change_point';
 import { ChangePointSparkline } from './change_point_visualization';
 import { getDetectionEntities } from '../get_detection_entities';
+import { nightshiftBackgroundTransition } from '../nightshift_transition';
 
 const SPARKLINE_SKELETON_WIDTH = 64;
 const SPARKLINE_SKELETON_HEIGHT = 32;
@@ -114,7 +115,7 @@ function DetectionCard({
         ${onClick
           ? `
         cursor: pointer;
-        transition: background 0.15s;
+        transition: ${nightshiftBackgroundTransition(euiTheme)};
 
         &:hover {
           background: ${

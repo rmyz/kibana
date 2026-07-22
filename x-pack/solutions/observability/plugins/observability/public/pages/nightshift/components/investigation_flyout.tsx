@@ -57,6 +57,12 @@ import {
 } from './investigation_status_badge';
 import { InvestigationItemChatButton } from './investigation_item_chat_button';
 import {
+  nightshiftBackgroundTransition,
+  nightshiftOpacityTransition,
+  nightshiftReducedMotionStyles,
+  nightshiftTransformTransition,
+} from '../nightshift_transition';
+import {
   formatBlindSpotMarkdown,
   getConclusionBody,
   getHypothesisStatusLabel,
@@ -116,7 +122,7 @@ function InvestigationFlyoutListPanel({
       paddingSize="none"
       css={css`
         background: ${euiTheme.colors.backgroundBasePlain};
-        transition: background ${euiTheme.animation.fast} ${euiTheme.animation.resistance};
+        transition: ${nightshiftBackgroundTransition(euiTheme)};
 
         &:hover {
           background: ${euiTheme.colors.backgroundBaseSubdued};
@@ -181,11 +187,8 @@ function InvestigationFlyoutRow({
                 onClick={() => setIsOpen((open) => !open)}
                 css={css`
                   transform: rotate(${isOpen ? '90deg' : '0deg'});
-                  transition: transform ${euiTheme.animation.fast} ${euiTheme.animation.resistance};
-
-                  @media (prefers-reduced-motion: reduce) {
-                    transition: none;
-                  }
+                  transition: ${nightshiftTransformTransition(euiTheme)};
+                  ${nightshiftReducedMotionStyles}
                 `}
               />
             </EuiToolTip>
@@ -198,12 +201,13 @@ function InvestigationFlyoutRow({
             className={investigationFlyoutRowActionClassName}
             css={css`
               opacity: 0;
-              transition: opacity ${euiTheme.animation.fast} ${euiTheme.animation.resistance};
+              transition: ${nightshiftOpacityTransition(euiTheme)};
 
               @media (prefers-reduced-motion: reduce) {
                 opacity: 1;
-                transition: none;
               }
+
+              ${nightshiftReducedMotionStyles}
             `}
           >
             {action}

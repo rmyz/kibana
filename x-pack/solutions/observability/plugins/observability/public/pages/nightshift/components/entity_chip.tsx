@@ -9,6 +9,7 @@ import { css } from '@emotion/react';
 import React from 'react';
 import { EuiIcon, EuiText, useEuiTheme } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+import { nightshiftBackgroundTransition } from '../nightshift_transition';
 
 export interface EntityChipProps {
   label: string;
@@ -43,7 +44,7 @@ export function EntityChip({
         font: inherit;
         gap: ${euiTheme.size.xs};
         padding: ${euiTheme.size.s} ${euiTheme.size.m};
-        transition: background 0.15s;
+        transition: ${nightshiftBackgroundTransition(euiTheme)};
 
         &:hover,
         &:focus-visible {
