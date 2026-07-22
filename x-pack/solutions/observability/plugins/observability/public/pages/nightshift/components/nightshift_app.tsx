@@ -144,6 +144,11 @@ export function NightshiftApp(): React.ReactElement {
     setEventNotFound(false);
   }, [handleFlyoutClose, isLoading, selectedEvent, selectedEventUuid]);
 
+  useEffect(() => {
+    if (selectedEvent && activeBlastRadiusChip && !selectedEventVisible) {
+      handleFlyoutClose();
+    }
+  }, [activeBlastRadiusChip, handleFlyoutClose, selectedEvent, selectedEventVisible]);
   const scrollToSection = (sectionRef: React.RefObject<HTMLElement>) => {
     sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -314,7 +319,7 @@ export function NightshiftApp(): React.ReactElement {
                     selectedEventUuid={selectedEventUuid}
                     statusColor="danger"
                     title={i18n.translate('xpack.observability.nightshift.list.needsActionTitle', {
-                      defaultMessage: 'Need Action',
+                      defaultMessage: 'Needs action',
                     })}
                   />
                 </EuiFlexItem>

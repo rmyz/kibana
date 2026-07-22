@@ -114,7 +114,6 @@ describe('getDetectionEntities', () => {
       }),
     ]);
   });
-
   it('falls back to the detection stream name when no features are available', () => {
     const entities = getDetectionEntities(mockEvent(), mockDetection(), []);
 

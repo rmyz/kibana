@@ -32,6 +32,15 @@ jest.mock('../hooks/use_fetch_stream_features', () => ({
   }),
 }));
 
+jest.mock('../hooks/use_fetch_stream_features', () => ({
+  useFetchStreamFeatures: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  }),
+}));
+
 jest.mock('../hooks/use_fetch_event_lifecycle', () => ({
   useFetchEventLifecycle: () => ({
     data: {
