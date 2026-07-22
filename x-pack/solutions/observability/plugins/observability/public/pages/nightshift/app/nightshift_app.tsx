@@ -21,20 +21,23 @@ import {
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
-import { BlastRadiusEntities } from './blast_radius_entities';
-import { EventFlyout } from './event_flyout';
-import { NightshiftTitle } from './nightshift_title';
-import { SignificantEventList } from './significant_event_list';
-import { SignificantEventStatuses } from './significant_event_statuses';
 import { useKibana } from '../../../utils/kibana_react';
-import { useFetchSignificantEvents } from '../hooks/use_fetch_significant_events';
+import { buildNewSignificantEventChatOptions } from '../chat/open_significant_event_in_chat';
 import {
   byCriticalityAndUpdatedAtDesc,
   getNeedsActionEvents,
   getResolvedEvents,
-} from '../significant_event_status';
-import { buildBlastRadiusChips, filterEventsByBlastRadiusChip } from '../blast_radius_chips';
-import { buildNewSignificantEventChatOptions } from '../open_significant_event_in_chat';
+} from '../event/significant_event_status';
+import { useFetchSignificantEvents } from '../hooks/use_fetch_significant_events';
+import {
+  buildBlastRadiusChips,
+  filterEventsByBlastRadiusChip,
+} from '../landing/blast_radius_chips';
+import { BlastRadiusEntities } from '../landing/blast_radius_entities';
+import { SignificantEventList } from '../landing/significant_event_list';
+import { SignificantEventStatuses } from '../landing/significant_event_statuses';
+import { EventFlyout } from '../event/event_flyout';
+import { NightshiftHeader } from './nightshift_header';
 
 // Kept in the URL so a refresh or a shared link restores the open flyout.
 const SELECTED_EVENT_QUERY_PARAM = 'eventUuid';
@@ -176,7 +179,7 @@ export function NightshiftApp(): React.ReactElement {
         padding: ${euiTheme.size.xxl} 0 calc(${euiTheme.size.xxl} * 1.5);
       `}
     >
-      <NightshiftTitle
+      <NightshiftHeader
         isLoading={isLoading}
         hasNeedsAction={hasNeedsAction}
         showAllEventsHref={showAllEventsHref}

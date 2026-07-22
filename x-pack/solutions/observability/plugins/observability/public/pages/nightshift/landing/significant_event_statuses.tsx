@@ -17,7 +17,7 @@ import {
   useEuiTheme,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import { nightshiftStatusCardTransition } from '../nightshift_transition';
+import { nightshiftStatusCardTransition } from '../common/nightshift_transition';
 
 type SignificantEventStatusGroup = 'needsAction' | 'resolved';
 

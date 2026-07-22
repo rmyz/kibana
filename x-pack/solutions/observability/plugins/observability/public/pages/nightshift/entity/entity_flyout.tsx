@@ -31,9 +31,9 @@ import {
 } from '@kbn/significant-events-plugin/common';
 import { AiButton } from '@kbn/shared-ux-ai-components';
 import { useKibana } from '../../../utils/kibana_react';
-import { formatChatAttachmentDescription } from '../chat_attachment_description';
-import { FlyoutSectionTitle } from './flyout_section_title';
-import { TruncatableSummary } from './truncatable_summary';
+import { formatChatAttachmentDescription } from '../chat/chat_attachment_description';
+import { FlyoutSectionTitle } from '../common/flyout_section_title';
+import { TruncatableSummary } from '../common/truncatable_summary';
 
 export interface EntityFlyoutProps {
   feature: Feature;

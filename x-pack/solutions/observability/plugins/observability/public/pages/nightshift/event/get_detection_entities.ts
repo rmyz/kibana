@@ -12,7 +12,7 @@ import type {
   SignalEntry,
   SignificantEvent,
 } from '@kbn/significant-events-schema';
-import { getBlastRadiusEntryChipName, getFeatureDisplayName } from './blast_radius_chips';
+import { getBlastRadiusEntryChipName, getFeatureDisplayName } from '../landing/blast_radius_chips';
 
 export interface DetectionEntityRef {
   key: string;

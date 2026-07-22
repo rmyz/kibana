@@ -12,9 +12,9 @@ import { i18n } from '@kbn/i18n';
 import { FormattedRelative } from '@kbn/i18n-react';
 import { AiButtonIcon } from '@kbn/shared-ux-ai-components';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
-import { InvestigationStatusBadge } from './investigation_status_badge';
-import { getStatusColor } from '../significant_event_status';
-import { nightshiftBackgroundTransition } from '../nightshift_transition';
+import { InvestigationStatusBadge } from '../investigation/investigation_status_badge';
+import { getStatusColor } from '../event/significant_event_status';
+import { nightshiftBackgroundTransition } from '../common/nightshift_transition';
 
 export interface SignificantEventItemProps {
   event: SignificantEvent;

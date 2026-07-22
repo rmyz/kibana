@@ -16,8 +16,9 @@ import {
   useEuiTheme,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+import { NightshiftMarkIcon } from './nightshift_mark_icon';
 
-export interface NightshiftTitleProps {
+export interface NightshiftHeaderProps {
   isLoading?: boolean;
   hasNeedsAction?: boolean;
   showAllEventsHref?: string;
@@ -67,13 +68,11 @@ const getHeroTitle = ({
   });
 };
 
-import { NightshiftMarkIcon } from './nightshift_mark_icon';
-
-export function NightshiftTitle({
+export function NightshiftHeader({
   isLoading = false,
   hasNeedsAction = false,
   showAllEventsHref,
-}: NightshiftTitleProps): React.ReactElement {
+}: NightshiftHeaderProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
 
   const title = getHeroTitle({ isLoading, hasNeedsAction });

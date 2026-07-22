@@ -28,7 +28,7 @@ import { useKibana } from '../../../utils/kibana_react';
 import {
   buildInvestigationConversationChatOptions,
   buildNewSignificantEventChatOptions,
-} from '../open_significant_event_in_chat';
+} from '../chat/open_significant_event_in_chat';
 
 const INVESTIGATION_MENU_TITLE_MAX_LENGTH = 48;
 

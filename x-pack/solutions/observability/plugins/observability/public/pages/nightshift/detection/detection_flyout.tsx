@@ -34,13 +34,13 @@ import type {
   SignalEntry,
   SignificantEvent,
 } from '@kbn/significant-events-schema';
-import { useFormatTimestamp } from '../format_timestamp';
-import { getChangePointLabel } from '../change_point';
+import { useFormatTimestamp } from '../common/format_timestamp';
+import { getChangePointLabel } from './change_point';
 import { ChangePointTrendChart } from './change_point_visualization';
-import { EntityChip } from './entity_chip';
-import { EntityFlyout } from './entity_flyout';
-import { FlyoutSectionTitle } from './flyout_section_title';
-import { TruncatableSummary } from './truncatable_summary';
+import { EntityChip } from '../entity/entity_chip';
+import { EntityFlyout } from '../entity/entity_flyout';
+import { FlyoutSectionTitle } from '../common/flyout_section_title';
+import { TruncatableSummary } from '../common/truncatable_summary';
 import { useKibana } from '../../../utils/kibana_react';
 import { useFetchStreamFeatures } from '../hooks/use_fetch_stream_features';
 import {
@@ -48,8 +48,8 @@ import {
   enrichEntityFeature,
   resolveEntityFeature,
   type DetectionEntityRef,
-} from '../get_detection_entities';
-import { formatChatAttachmentDescription } from '../chat_attachment_description';
+} from '../event/get_detection_entities';
+import { formatChatAttachmentDescription } from '../chat/chat_attachment_description';
 
 export interface DetectionFlyoutProps {
   detection: LifecycleDetection;

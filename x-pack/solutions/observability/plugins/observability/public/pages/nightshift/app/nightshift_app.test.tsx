@@ -18,7 +18,7 @@ jest.mock('../hooks/use_fetch_significant_events');
 jest.mock('../../../utils/kibana_react');
 
 // The flyout's own behavior is covered by event_flyout.test.tsx.
-jest.mock('./event_flyout', () => ({
+jest.mock('../event/event_flyout', () => ({
   EventFlyout: ({ event, onClose }: { event: SignificantEvent; onClose: () => void }) => (
     <div data-test-subj="stubEventFlyout">
       <span>{`Flyout: ${event.title}`}</span>

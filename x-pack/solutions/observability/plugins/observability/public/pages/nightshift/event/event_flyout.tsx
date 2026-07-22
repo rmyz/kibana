@@ -22,17 +22,17 @@ import {
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
-import { DetectionFlyout } from './detection_flyout';
+import { DetectionFlyout } from '../detection/detection_flyout';
 import { DetectionsList } from './detections_list';
 import { EventInvestigation } from './event_investigation';
 import { EventFlyoutChatFooter } from './event_flyout_chat_footer';
-import { InvestigationStatusBadge } from './investigation_status_badge';
-import { TruncatableSummary } from './truncatable_summary';
-import { NightshiftMarkIcon } from './nightshift_mark_icon';
-import { useFormatTimestamp } from '../format_timestamp';
+import { InvestigationStatusBadge } from '../investigation/investigation_status_badge';
+import { TruncatableSummary } from '../common/truncatable_summary';
+import { NightshiftMarkIcon } from '../app/nightshift_mark_icon';
+import { useFormatTimestamp } from '../common/format_timestamp';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
-import { findDetectionSignal } from '../resolve_detection_signal';
-import { isNeedsActionStatus } from '../significant_event_status';
+import { findDetectionSignal } from '../detection/resolve_detection_signal';
+import { isNeedsActionStatus } from './significant_event_status';
 import { useKibana } from '../../../utils/kibana_react';
 
 export interface EventFlyoutProps {

@@ -21,8 +21,8 @@ import type {
   SignificantEventInvestigation,
 } from '@kbn/significant-events-schema';
 import { useKibana } from '../../../utils/kibana_react';
-import { InvestigationFlyout } from './investigation_flyout';
-import { InvestigationSummaryCard } from './investigation_summary_card';
+import { InvestigationFlyout } from '../investigation/investigation_flyout';
+import { InvestigationSummaryCard } from '../investigation/investigation_summary_card';
 
 export interface EventInvestigationProps {
   event: SignificantEvent;

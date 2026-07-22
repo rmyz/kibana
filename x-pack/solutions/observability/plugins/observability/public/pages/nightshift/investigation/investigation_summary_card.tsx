@@ -24,11 +24,11 @@ import {
 import type { InvestigationStatus } from '@kbn/investigation-output';
 import type { InvestigationState } from '@kbn/significant-events-schema';
 import { i18n } from '@kbn/i18n';
-import { useFormatTimestamp } from '../format_timestamp';
+import { useFormatTimestamp } from '../common/format_timestamp';
 import {
   buildBlindSpotChatOptions,
   buildRecommendationChatOptions,
-} from '../open_investigation_item_in_chat';
+} from './open_investigation_item_in_chat';
 import { useKibana } from '../../../utils/kibana_react';
 import { InvestigationItemChatButton } from './investigation_item_chat_button';
 import { InvestigationCompleteStatus } from './investigation_status_badge';
@@ -37,7 +37,7 @@ import {
   nightshiftBackgroundTransition,
   nightshiftOpacityTransition,
   nightshiftReducedMotionStyles,
-} from '../nightshift_transition';
+} from '../common/nightshift_transition';
 import {
   getConclusionBody,
   getInvestigationGoalText,
@@ -49,7 +49,7 @@ import {
   mapBlindSpots,
   type BlindSpotItem,
   type InvestigationRecommendation,
-} from '../investigation_presentation';
+} from './investigation_presentation';
 
 const INLINE_BLIND_SPOT_LIMIT = 4;
 const summaryRowActionClassName = 'nightshiftInvestigationSummaryRowAction';

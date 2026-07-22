@@ -15,8 +15,8 @@ import {
 } from '@kbn/shared-ux-ai-components';
 import { i18n } from '@kbn/i18n';
 import type { SignificantEventStatus } from '@kbn/significant-events-schema';
-import { getStatusLabel, isNeedsActionStatus } from '../significant_event_status';
-import { nightshiftReducedMotionStyles } from '../nightshift_transition';
+import { getStatusLabel, isNeedsActionStatus } from '../event/significant_event_status';
+import { nightshiftReducedMotionStyles } from '../common/nightshift_transition';
 
 // Staggered offsets so the dots pulse in sequence (typing-indicator effect).
 const INVESTIGATING_DOT_DELAYS_MS = [0, 160, 320] as const;

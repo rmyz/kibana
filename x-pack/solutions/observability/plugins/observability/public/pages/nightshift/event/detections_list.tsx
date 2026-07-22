@@ -30,11 +30,11 @@ import type {
 } from '@kbn/significant-events-schema';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
 import { useFetchStreamFeatures } from '../hooks/use_fetch_stream_features';
-import { useFormatTimestamp } from '../format_timestamp';
-import { getChangePointLabel } from '../change_point';
-import { ChangePointSparkline } from './change_point_visualization';
-import { getDetectionEntities } from '../get_detection_entities';
-import { nightshiftBackgroundTransition } from '../nightshift_transition';
+import { useFormatTimestamp } from '../common/format_timestamp';
+import { getChangePointLabel } from '../detection/change_point';
+import { ChangePointSparkline } from '../detection/change_point_visualization';
+import { getDetectionEntities } from './get_detection_entities';
+import { nightshiftBackgroundTransition } from '../common/nightshift_transition';
 
 const SPARKLINE_SKELETON_WIDTH = 64;
 const SPARKLINE_SKELETON_HEIGHT = 32;

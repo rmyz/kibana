@@ -41,15 +41,15 @@ import type {
 } from '@kbn/significant-events-schema';
 import { AiButton } from '@kbn/shared-ux-ai-components';
 import { useKibana } from '../../../utils/kibana_react';
-import { buildInvestigationConversationChatOptions } from '../open_significant_event_in_chat';
+import { buildInvestigationConversationChatOptions } from '../chat/open_significant_event_in_chat';
 import {
   buildBlindSpotChatOptions,
   buildHypothesisChatOptions,
   buildRecommendationChatOptions,
-} from '../open_investigation_item_in_chat';
-import { useFormatTimestamp } from '../format_timestamp';
+} from './open_investigation_item_in_chat';
+import { useFormatTimestamp } from '../common/format_timestamp';
 import { InvestigationFormattedText } from './investigation_formatted_text';
-import { TruncatableSummary } from './truncatable_summary';
+import { TruncatableSummary } from '../common/truncatable_summary';
 import {
   GradientOutlinedStatusBadge,
   InvestigationCompleteCheckIcon,
@@ -61,7 +61,7 @@ import {
   nightshiftOpacityTransition,
   nightshiftReducedMotionStyles,
   nightshiftTransformTransition,
-} from '../nightshift_transition';
+} from '../common/nightshift_transition';
 import {
   formatBlindSpotMarkdown,
   getConclusionBody,
@@ -73,7 +73,7 @@ import {
   mapBlindSpots,
   parseInvestigationRecommendations,
   type InvestigationRecommendation,
-} from '../investigation_presentation';
+} from './investigation_presentation';
 
 export type InvestigationFlyoutTabId = 'recommendations' | 'blindSpots' | 'hypotheses';
 

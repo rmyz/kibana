@@ -18,7 +18,7 @@ import {
   useEuiTheme,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import { nightshiftInteractiveSurfaceTransition } from '../nightshift_transition';
+import { nightshiftInteractiveSurfaceTransition } from '../common/nightshift_transition';
 
 export const MAX_VISIBLE_BLAST_RADIUS_ENTITIES = 10;
 

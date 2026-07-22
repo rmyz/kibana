@@ -33,7 +33,7 @@ import {
   getChangePointTimestamp,
   ILLUSTRATIVE_POINT_INTERVAL_MS,
   ILLUSTRATIVE_SERIES_POINTS,
-} from '../change_point';
+} from './change_point';
 import { useChartThemes } from '../../../hooks/use_chart_themes';
 import { ChangePointAnnotationTooltip } from './change_point_annotation_tooltip';
 
