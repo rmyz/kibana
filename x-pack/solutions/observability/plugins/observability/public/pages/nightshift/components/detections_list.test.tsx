@@ -69,12 +69,17 @@ const mockDetection = (overrides: Partial<LifecycleDetection> = {}): LifecycleDe
 function setLifecycle({
   detections = [] as LifecycleDetection[],
   isLoading = false,
+  isFetching = false,
   isError = false,
   refetch = jest.fn(),
 } = {}) {
   mockUseFetchEventLifecycle.mockReturnValue({
-    data: isLoading || isError ? undefined : { detections, discoveries: [], events: [] },
+    data:
+      isLoading && detections.length === 0
+        ? undefined
+        : { detections, discoveries: [], events: [] },
     isLoading,
+    isFetching: isLoading || isFetching,
     isError,
     refetch,
   });
@@ -108,12 +113,28 @@ const renderList = (props: Partial<React.ComponentProps<typeof DetectionsList>> 
   );
 
 describe('DetectionsList', () => {
-  it('shows a loading spinner while fetching', () => {
-    setLifecycle({ isLoading: true });
-    const { container } = renderList();
+  it('shows detection skeletons while fetching for the first time', () => {
+    setLifecycle({ isLoading: true, isFetching: true });
+    renderList();
 
-    expect(container.querySelector('.euiLoadingSpinner')).toBeInTheDocument();
+    expect(screen.getAllByTestId('nightshiftDetectionCardSkeleton')).toHaveLength(2);
+    expect(screen.queryByTestId('nightshiftDetectionCard')).not.toBeInTheDocument();
     expect(screen.queryByText('No detections found for this event.')).not.toBeInTheDocument();
+  });
+
+  it('shows one skeleton per cached detection while refetching', () => {
+    setLifecycle({
+      detections: [
+        mockDetection({ detection_id: 'det-1', rule_name: 'first-detection' }),
+        mockDetection({ detection_id: 'det-2', rule_name: 'second-detection' }),
+      ],
+      isFetching: true,
+    });
+    renderList();
+
+    expect(screen.getAllByTestId('nightshiftDetectionCardSkeleton')).toHaveLength(2);
+    expect(screen.queryByTestId('nightshiftDetectionCard')).not.toBeInTheDocument();
+    expect(screen.queryByText('first-detection')).not.toBeInTheDocument();
   });
 
   it('shows the empty state when there are no detections', () => {

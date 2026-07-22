@@ -13,8 +13,9 @@ import {
   EuiCallOut,
   EuiFlexGroup,
   EuiFlexItem,
-  EuiLoadingSpinner,
   EuiPanel,
+  EuiSkeletonRectangle,
+  EuiSkeletonText,
   EuiSpacer,
   EuiText,
   EuiTitle,
@@ -34,6 +35,11 @@ import { getChangePointLabel } from '../change_point';
 import { ChangePointSparkline } from './change_point_visualization';
 import { getDetectionEntities } from '../get_detection_entities';
 
+const SPARKLINE_SKELETON_WIDTH = 64;
+const SPARKLINE_SKELETON_HEIGHT = 32;
+/** Placeholder rows on first load before any lifecycle data exists. */
+const INITIAL_DETECTION_SKELETON_COUNT = 2;
+
 export interface DetectionsListProps {
   event: SignificantEvent;
   eventUuid: string;
@@ -41,7 +47,7 @@ export interface DetectionsListProps {
   onDetectionClick?: (detection: LifecycleDetection) => void;
   lifecycleQuery?: Pick<
     UseQueryResult<EventLifecycleResponse, Error>,
-    'data' | 'isLoading' | 'isError' | 'refetch'
+    'data' | 'isLoading' | 'isFetching' | 'isError' | 'refetch'
   >;
 }
 
@@ -184,6 +190,100 @@ function DetectionCard({
   );
 }
 
+function DetectionCardSkeleton(): React.ReactElement {
+  const { euiTheme } = useEuiTheme();
+
+  return (
+    <div
+      aria-hidden
+      data-test-subj="nightshiftDetectionCardSkeleton"
+      css={css`
+        background: ${euiTheme.colors.backgroundBasePlain};
+        padding: ${euiTheme.size.m};
+      `}
+    >
+      <EuiFlexGroup
+        alignItems="center"
+        justifyContent="spaceBetween"
+        responsive={false}
+        wrap
+        gutterSize="s"
+      >
+        <EuiFlexItem
+          css={css`
+            flex: 1 1 ${TEXT_CONTENT_MIN_WIDTH};
+          `}
+        >
+          <EuiFlexGroup direction="column" gutterSize="xs" responsive={false}>
+            <EuiFlexItem grow={false}>
+              <EuiSkeletonText lines={1} />
+            </EuiFlexItem>
+            <EuiFlexItem grow={false}>
+              <EuiFlexGroup
+                gutterSize="xs"
+                wrap
+                responsive={false}
+                alignItems="center"
+                css={css`
+                  row-gap: ${euiTheme.size.xs};
+                `}
+              >
+                <EuiFlexItem grow={false}>
+                  <EuiSkeletonRectangle width={120} height={14} borderRadius="m" />
+                </EuiFlexItem>
+                <EuiFlexItem grow={false}>
+                  <EuiSkeletonRectangle width={100} height={20} borderRadius="m" />
+                </EuiFlexItem>
+                <EuiFlexItem grow={false}>
+                  <EuiSkeletonRectangle width={80} height={20} borderRadius="m" />
+                </EuiFlexItem>
+              </EuiFlexGroup>
+            </EuiFlexItem>
+          </EuiFlexGroup>
+        </EuiFlexItem>
+        <EuiFlexItem grow={false}>
+          <EuiSkeletonRectangle
+            width={SPARKLINE_SKELETON_WIDTH}
+            height={SPARKLINE_SKELETON_HEIGHT}
+            borderRadius="m"
+          />
+        </EuiFlexItem>
+      </EuiFlexGroup>
+    </div>
+  );
+}
+
+function DetectionListPanel({ items }: { items: React.ReactElement[] }): React.ReactElement {
+  const { euiTheme } = useEuiTheme();
+
+  return (
+    <EuiPanel hasBorder hasShadow={false} paddingSize="none">
+      <ol
+        css={css`
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        `}
+      >
+        {items.map((item, index) => (
+          <li
+            key={item.key ?? `detection-list-item-${index}`}
+            css={
+              index < items.length - 1
+                ? css`
+                    border-bottom: ${euiTheme.border.thin};
+                  `
+                : undefined
+            }
+          >
+            {item}
+          </li>
+        ))}
+      </ol>
+    </EuiPanel>
+  );
+}
+
 export function DetectionsList({
   event,
   eventUuid,
@@ -191,12 +291,11 @@ export function DetectionsList({
   onDetectionClick,
   lifecycleQuery: lifecycleQueryFromParent,
 }: DetectionsListProps): React.ReactElement {
-  const { euiTheme } = useEuiTheme();
   const internalLifecycleQuery = useFetchEventLifecycle(eventUuid, {
     enabled: !lifecycleQueryFromParent,
   });
   const lifecycleQuery = lifecycleQueryFromParent ?? internalLifecycleQuery;
-  const { data, isLoading, isError, refetch } = lifecycleQuery;
+  const { data, isLoading, isFetching, isError, refetch } = lifecycleQuery;
 
   // Most recent detection first — it is the most actionable one during an incident.
   const detections = useMemo(
@@ -208,6 +307,13 @@ export function DetectionsList({
     [data]
   );
 
+  const cachedDetectionCount = data?.detections?.length ?? 0;
+  const isInitialLoading = isLoading && cachedDetectionCount === 0;
+  const isRefetching = isFetching && !isInitialLoading;
+  const showDetectionSkeletons =
+    !isError && (isInitialLoading || (isRefetching && cachedDetectionCount > 0));
+  const skeletonCount = isInitialLoading ? INITIAL_DETECTION_SKELETON_COUNT : cachedDetectionCount;
+
   return (
     <>
       <EuiTitle size="xs">
@@ -218,14 +324,6 @@ export function DetectionsList({
         </h3>
       </EuiTitle>
       <EuiSpacer size="s" />
-
-      {isLoading && (
-        <EuiFlexGroup justifyContent="center">
-          <EuiFlexItem grow={false}>
-            <EuiLoadingSpinner size="m" />
-          </EuiFlexItem>
-        </EuiFlexGroup>
-      )}
 
       {isError && (
         <EuiCallOut
@@ -252,7 +350,15 @@ export function DetectionsList({
         </EuiCallOut>
       )}
 
-      {!isLoading && !isError && detections.length === 0 && (
+      {showDetectionSkeletons && (
+        <DetectionListPanel
+          items={Array.from({ length: skeletonCount }, (_, index) => (
+            <DetectionCardSkeleton key={`nightshift-detection-skeleton-${index}`} />
+          ))}
+        />
+      )}
+
+      {!showDetectionSkeletons && !isError && detections.length === 0 && (
         <EuiText size="s" color="subdued">
           {i18n.translate('xpack.observability.nightshift.flyout.detectionsEmptyDescription', {
             defaultMessage: 'No detections found for this event.',
@@ -260,36 +366,18 @@ export function DetectionsList({
         </EuiText>
       )}
 
-      {!isLoading && !isError && detections.length > 0 && (
-        <EuiPanel hasBorder hasShadow={false} paddingSize="none">
-          <ol
-            css={css`
-              list-style: none;
-              margin: 0;
-              padding: 0;
-            `}
-          >
-            {detections.map((detection, index) => (
-              <li
-                key={detection.detection_id}
-                css={
-                  index < detections.length - 1
-                    ? css`
-                        border-bottom: ${euiTheme.border.thin};
-                      `
-                    : undefined
-                }
-              >
-                <DetectionCard
-                  detection={detection}
-                  event={event}
-                  isSelected={detection.detection_id === selectedDetectionId}
-                  onClick={onDetectionClick}
-                />
-              </li>
-            ))}
-          </ol>
-        </EuiPanel>
+      {!showDetectionSkeletons && !isError && detections.length > 0 && (
+        <DetectionListPanel
+          items={detections.map((detection) => (
+            <DetectionCard
+              key={detection.detection_id}
+              detection={detection}
+              event={event}
+              isSelected={detection.detection_id === selectedDetectionId}
+              onClick={onDetectionClick}
+            />
+          ))}
+        />
       )}
     </>
   );
