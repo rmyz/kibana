@@ -8,8 +8,9 @@
 import { css } from '@emotion/react';
 import type { EuiThemeComputed } from '@elastic/eui';
 
-const duration = (euiTheme: EuiThemeComputed): string => euiTheme.animation.normal;
-const easing = (euiTheme: EuiThemeComputed): string => euiTheme.animation.resistance;
+const duration = (euiTheme: EuiThemeComputed): string => euiTheme.animation.normal ?? '250ms';
+const easing = (euiTheme: EuiThemeComputed): string =>
+  euiTheme.animation.resistance ?? 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 
 export const nightshiftBackgroundTransition = (euiTheme: EuiThemeComputed): string =>
   `background ${duration(euiTheme)} ${easing(euiTheme)}`;

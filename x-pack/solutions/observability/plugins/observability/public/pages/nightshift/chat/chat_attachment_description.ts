@@ -12,6 +12,7 @@ export type NightshiftChatAttachmentType =
   | 'Entity'
   | 'Significant Event'
   | 'Blind spot'
+  | 'Hypothesis'
   | 'Recommendation';
 
 /** Shown in Agent Builder as "Attachment added: {description}". */
