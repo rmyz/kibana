@@ -7,12 +7,13 @@
 
 import { css, keyframes } from '@emotion/react';
 import React from 'react';
-import { EuiBadge, useEuiTheme } from '@elastic/eui';
+import { EuiBadge, EuiIcon, EuiText, useEuiTheme, type EuiTextProps } from '@elastic/eui';
 import {
   SvgAiGradientDefs,
   useAiButtonGradientStyles,
   useSvgAiGradient,
 } from '@kbn/shared-ux-ai-components';
+import { i18n } from '@kbn/i18n';
 import type { SignificantEventStatus } from '@kbn/significant-events-schema';
 import { getStatusLabel, isNeedsActionStatus } from '../significant_event_status';
 
@@ -79,7 +80,170 @@ function InvestigatingStatus({ label }: { label: string }) {
   );
 }
 
-function InvestigatedStatus({ label }: { label: string }) {
+const COMPLETE_STATUS_CHECK_SIZE_PX = 12;
+const COMPLETE_STATUS_CIRCLE_SIZE_PX = 20;
+const HYPOTHESIS_STATUS_CIRCLE_SIZE_PX = 16;
+
+function InvestigationCompleteCheckIcon({
+  ariaLabel,
+  testSubj,
+  size = 'default',
+}: {
+  ariaLabel: string;
+  testSubj?: string;
+  size?: 'default' | 'compact';
+}): React.ReactElement {
+  const { euiTheme } = useEuiTheme();
+  const { gradientId, iconGradientCss, colors } = useSvgAiGradient({ variant: 'outlined' });
+
+  if (size === 'compact') {
+    const borderGradient = `linear-gradient(130.84deg, ${euiTheme.colors.backgroundFilledPrimary} 2.98%, ${euiTheme.colors.backgroundFilledAssistance} 66.24%)`;
+
+    return (
+      <>
+        <SvgAiGradientDefs gradientId={gradientId} colors={colors} />
+        <span
+          aria-label={ariaLabel}
+          data-test-subj={testSubj}
+          css={[
+            iconGradientCss,
+            css`
+              align-items: center;
+              background: linear-gradient(
+                    ${euiTheme.colors.backgroundBasePlain},
+                    ${euiTheme.colors.backgroundBasePlain}
+                  )
+                  padding-box,
+                ${borderGradient} border-box;
+              border: ${euiTheme.border.width.thin} solid transparent;
+              border-radius: 50%;
+              display: inline-flex;
+              flex-shrink: 0;
+              height: ${HYPOTHESIS_STATUS_CIRCLE_SIZE_PX}px;
+              justify-content: center;
+              width: ${HYPOTHESIS_STATUS_CIRCLE_SIZE_PX}px;
+            `,
+          ]}
+        >
+          <EuiIcon
+            type="check"
+            aria-hidden={true}
+            css={css`
+              height: 10px;
+              width: 10px;
+            `}
+          />
+        </span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SvgAiGradientDefs gradientId={gradientId} colors={colors} />
+      <span
+        aria-label={ariaLabel}
+        data-test-subj={testSubj}
+        css={css`
+          align-items: center;
+          background: linear-gradient(
+            130.84deg,
+            ${euiTheme.colors.backgroundFilledPrimary} 2.98%,
+            ${euiTheme.colors.backgroundFilledAssistance} 66.24%
+          );
+          border-radius: 50%;
+          display: inline-flex;
+          flex-shrink: 0;
+          height: ${COMPLETE_STATUS_CIRCLE_SIZE_PX}px;
+          justify-content: center;
+          width: ${COMPLETE_STATUS_CIRCLE_SIZE_PX}px;
+        `}
+      >
+        <EuiIcon
+          type="check"
+          color="ghost"
+          aria-hidden={true}
+          css={css`
+            height: ${COMPLETE_STATUS_CHECK_SIZE_PX}px;
+            width: ${COMPLETE_STATUS_CHECK_SIZE_PX}px;
+          `}
+        />
+      </span>
+    </>
+  );
+}
+
+function InvestigationCompleteStatus({
+  label,
+  testSubj,
+}: {
+  label: string;
+  testSubj?: string;
+}): React.ReactElement {
+  const { euiTheme } = useEuiTheme();
+  const completeStatusLabel = i18n.translate(
+    'xpack.observability.nightshift.investigation.completeStatusAriaLabel',
+    {
+      defaultMessage: 'Investigation complete',
+    }
+  );
+
+  return (
+    <span
+      data-test-subj={testSubj}
+      css={css`
+        align-items: center;
+        display: inline-flex;
+        font-weight: ${euiTheme.font.weight.semiBold};
+        gap: ${euiTheme.size.s};
+      `}
+    >
+      <InvestigationCompleteCheckIcon ariaLabel={completeStatusLabel} />
+      {label}
+    </span>
+  );
+}
+
+function InvestigationGradientLabel({
+  children,
+  testSubj,
+  size = 'xs',
+}: {
+  children: React.ReactNode;
+  testSubj?: string;
+  size?: EuiTextProps['size'];
+}): React.ReactElement {
+  const { labelCss } = useAiButtonGradientStyles({ variant: 'outlined' });
+  const { gradientId, colors } = useSvgAiGradient({ variant: 'outlined' });
+
+  return (
+    <>
+      <SvgAiGradientDefs gradientId={gradientId} colors={colors} />
+      <EuiText
+        size={size}
+        component="span"
+        data-test-subj={testSubj}
+        css={[
+          labelCss,
+          css`
+            line-height: 1;
+            padding: 0;
+          `,
+        ]}
+      >
+        {children}
+      </EuiText>
+    </>
+  );
+}
+
+function GradientOutlinedStatusBadge({
+  label,
+  testSubj,
+}: {
+  label: string;
+  testSubj?: string;
+}): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const { labelCss } = useAiButtonGradientStyles({ variant: 'outlined' });
   const { gradientId, iconGradientCss, colors } = useSvgAiGradient({ variant: 'outlined' });
@@ -93,7 +257,7 @@ function InvestigatedStatus({ label }: { label: string }) {
         color="hollow"
         iconType="check"
         iconSide="left"
-        data-test-subj="nightshiftInvestigatedStatus"
+        data-test-subj={testSubj}
         css={[
           iconGradientCss,
           css`
@@ -118,6 +282,10 @@ function InvestigatedStatus({ label }: { label: string }) {
   );
 }
 
+function InvestigatedStatus({ label }: { label: string }) {
+  return <GradientOutlinedStatusBadge label={label} testSubj="nightshiftInvestigatedStatus" />;
+}
+
 /**
  * Animated "Investigating" badge while the event needs action, AI-gradient
  * "Investigated" badge once resolved. Shared between the event list items and
@@ -136,3 +304,10 @@ export function InvestigationStatusBadge({
     <InvestigatedStatus label={label} />
   );
 }
+
+export {
+  GradientOutlinedStatusBadge,
+  InvestigationCompleteCheckIcon,
+  InvestigationCompleteStatus,
+  InvestigationGradientLabel,
+};

@@ -174,6 +174,7 @@ export function EntityFlyout({
       onClose={onClose}
       size="s"
       session="inherit"
+      resizable
       aria-label={title}
       data-test-subj="nightshiftEntityFlyout"
       type="push"

@@ -136,6 +136,7 @@ export function DetectionFlyout({
         onClose={onClose}
         size="s"
         session="inherit"
+        resizable
         aria-label={title}
         data-test-subj="nightshiftDetectionFlyout"
         type="push"

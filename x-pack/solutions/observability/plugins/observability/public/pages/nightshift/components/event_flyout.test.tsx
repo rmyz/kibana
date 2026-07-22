@@ -178,14 +178,14 @@ describe('EventFlyout', () => {
     expect(screen.getByText('Spike')).toBeInTheDocument();
   });
 
-  it('renders the investigations section with an empty state', () => {
+  it('renders the investigation section with an empty state', () => {
     renderFlyout();
 
-    expect(screen.getByText('Investigations')).toBeInTheDocument();
+    expect(screen.getByText('Investigation')).toBeInTheDocument();
     expect(screen.getByText('No investigations yet.')).toBeInTheDocument();
   });
 
-  it('renders an investigation row when the event has investigations', () => {
+  it('renders the investigation summary when the event has investigations', () => {
     renderFlyout({
       event: {
         ...mockEvent,
@@ -199,7 +199,8 @@ describe('EventFlyout', () => {
       },
     });
 
-    expect(screen.getByTestId('nightshiftEventInvestigationRow')).toBeInTheDocument();
+    expect(screen.getByTestId('nightshiftInvestigationSummaryCard')).toBeInTheDocument();
+    expect(screen.getByTestId('nightshiftInvestigationShowDetailsButton')).toBeInTheDocument();
     expect(screen.queryByText('No investigations yet.')).not.toBeInTheDocument();
   });
 

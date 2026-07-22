@@ -1,0 +1,195 @@
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
+ */
+
+import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { EuiProvider } from '@elastic/eui';
+import { I18nProvider } from '@kbn/i18n-react';
+import type { InvestigationState, SignificantEvent } from '@kbn/significant-events-schema';
+import { useInvestigationState } from '@kbn/investigation-output';
+import { EventInvestigation } from './event_investigation';
+
+const mockOpenChat = jest.fn();
+
+jest.mock('@kbn/kibana-react-plugin/public', () => ({
+  useUiSetting: () => 'MMM D, YYYY @ HH:mm:ss.SSS',
+}));
+
+jest.mock('@kbn/investigation-output', () => ({
+  useInvestigationState: jest.fn(),
+}));
+
+jest.mock('../../../utils/kibana_react', () => ({
+  useKibana: () => ({
+    services: {
+      http: { get: jest.fn() },
+      agentBuilder: { openChat: mockOpenChat },
+    },
+  }),
+}));
+
+const mockUseInvestigationState = useInvestigationState as jest.Mock;
+
+const mockEvent = (overrides: Partial<SignificantEvent> = {}): SignificantEvent => ({
+  '@timestamp': '2026-07-10T12:00:00Z',
+  event_id: 'evt-001',
+  event_uuid: 'evt-uuid-001',
+  status: 'open',
+  stream_names: ['logs.web-frontend'],
+  title: 'Latency spike on web-frontend',
+  summary: 'Summary',
+  severity: '60-high',
+  confidence: 0.9,
+  causal_features: [],
+  ...overrides,
+});
+
+const completeState: InvestigationState = {
+  summary: 'Investigate latency spike on web-frontend.',
+  hypotheses: [
+    {
+      candidate: 'Deployment regression in checkout service',
+      confidence: 0.92,
+      status: 'confirmed',
+    },
+  ],
+  conclusion: `# Conclusion
+Checkout deploy introduced a regression.
+
+## Next Steps
+- Roll back checkout deployment · Revert commit abc123 and monitor error rate.`,
+  gaps_found: ['Missing trace coverage · No spans for payment gateway calls.'],
+};
+
+const renderInvestigation = (event: SignificantEvent) =>
+  render(
+    <I18nProvider>
+      <EuiProvider>
+        <EventInvestigation event={event} />
+      </EuiProvider>
+    </I18nProvider>
+  );
+
+describe('EventInvestigation', () => {
+  beforeEach(() => {
+    mockOpenChat.mockClear();
+    mockUseInvestigationState.mockReturnValue({
+      status: 'complete',
+      state: completeState,
+      error: undefined,
+      conversationId: 'conv-123',
+    });
+  });
+
+  it('renders the empty state when there are no investigations', () => {
+    renderInvestigation(mockEvent());
+
+    expect(screen.getByText('Investigation')).toBeInTheDocument();
+    expect(screen.getByTestId('nightshiftInvestigationEmptyState')).toHaveTextContent(
+      'No investigations yet.'
+    );
+    expect(
+      screen.queryByTestId('nightshiftInvestigationShowDetailsButton')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders the latest investigation summary and opens the flyout', () => {
+    renderInvestigation(
+      mockEvent({
+        investigations: [
+          {
+            workflow_execution_id: 'exec-old',
+            started_at: '2026-07-10T11:00:00Z',
+            completed_at: '2026-07-10T11:05:00Z',
+          },
+          {
+            workflow_execution_id: 'exec-latest',
+            started_at: '2026-07-10T12:00:00Z',
+            completed_at: '2026-07-10T12:05:00Z',
+          },
+        ],
+      })
+    );
+
+    expect(mockUseInvestigationState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowExecutionId: 'exec-latest',
+        isRunning: false,
+      })
+    );
+    expect(screen.getByTestId('nightshiftInvestigationSummaryCard')).toBeInTheDocument();
+    expect(screen.getByTestId('nightshiftInvestigationHeadline')).toHaveTextContent(
+      'Deployment regression in checkout service'
+    );
+
+    fireEvent.click(screen.getByTestId('nightshiftInvestigationShowDetailsButton'));
+    expect(screen.getByTestId('nightshiftInvestigationFlyout')).toBeInTheDocument();
+    expect(screen.getByTestId('nightshiftInvestigationFlyoutConclusion')).toBeInTheDocument();
+    expect(screen.getByTestId('nightshiftInvestigationFlyoutTab-recommendations')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+
+    fireEvent.click(screen.getByTestId('nightshiftInvestigationFlyoutChatButton'));
+    expect(mockOpenChat).toHaveBeenCalledWith({ conversationId: 'conv-123' });
+  });
+
+  it('opens the flyout when More recommendations is clicked', () => {
+    renderInvestigation(
+      mockEvent({
+        investigations: [
+          {
+            workflow_execution_id: 'exec-latest',
+            started_at: '2026-07-10T12:00:00Z',
+            completed_at: '2026-07-10T12:05:00Z',
+          },
+        ],
+      })
+    );
+
+    fireEvent.click(screen.getByTestId('nightshiftInvestigationMoreRecommendationsLink'));
+    expect(screen.getByTestId('nightshiftInvestigationFlyout')).toBeInTheDocument();
+    expect(screen.getByTestId('nightshiftInvestigationFlyoutTab-recommendations')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+  });
+
+  it('shows ongoing investigation content when the hook reports running status', () => {
+    mockUseInvestigationState.mockReturnValue({
+      status: 'running',
+      state: {
+        summary: 'Determine whether the deploy caused the spike.',
+        hypotheses: [
+          {
+            candidate: 'Checkout deploy regression',
+            confidence: 0.55,
+            status: 'investigating',
+          },
+        ],
+      },
+      error: undefined,
+      conversationId: undefined,
+    });
+
+    renderInvestigation(
+      mockEvent({
+        investigations: [
+          {
+            workflow_execution_id: 'exec-running',
+            started_at: '2026-07-10T12:00:00Z',
+          },
+        ],
+      })
+    );
+
+    expect(screen.getByText('Checking hypotheses')).toBeInTheDocument();
+    expect(screen.getByTestId('nightshiftInvestigationGoalPreview')).toHaveTextContent(
+      'Determine whether the deploy caused the spike.'
+    );
+  });
+});

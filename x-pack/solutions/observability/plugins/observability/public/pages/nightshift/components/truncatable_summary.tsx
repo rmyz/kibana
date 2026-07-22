@@ -9,7 +9,7 @@ import { css } from '@emotion/react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { EuiLink, EuiText, useEuiTheme } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import { SummaryInlineCodeText } from '../summary_inline_code';
+import { InvestigationFormattedText } from './investigation_formatted_text';
 
 const DEFAULT_MAX_SUMMARY_LENGTH = 300;
 
@@ -48,7 +48,7 @@ export function TruncatableSummary({
           line-height: 1.5;
         `}
       >
-        <SummaryInlineCodeText text={displaySummary} />
+        <InvestigationFormattedText text={displaySummary} />
       </EuiText>
       {isSummaryLong && (
         // eslint-disable-next-line @elastic/eui/require-href-for-link

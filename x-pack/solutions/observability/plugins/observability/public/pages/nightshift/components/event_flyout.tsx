@@ -79,6 +79,7 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
       size="s"
       type="push"
       session="start"
+      resizable
       aria-label={event.title}
       data-test-subj="nightshiftEventFlyout"
     >
