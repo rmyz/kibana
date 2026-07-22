@@ -152,7 +152,7 @@ describe('NightshiftApp', () => {
     });
     const { container } = renderWithIntl();
 
-    expect(screen.getByRole('heading', { name: 'Needs action' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Need Action' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Resolved' })).toBeInTheDocument();
 
     const resolvedCard = container.querySelector<HTMLElement>(
@@ -220,7 +220,7 @@ describe('NightshiftApp', () => {
     expect(screen.getByText('Service B event')).toBeInTheDocument();
     expect(screen.queryByText('Service A event')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Need action: 2' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Needs action' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Need Action' })).toBeInTheDocument();
   });
 
   it('clears the blast radius filter when the selected chip is clicked again', () => {
@@ -277,7 +277,7 @@ describe('NightshiftApp', () => {
     expect(
       screen.getByText('No significant events were detected. Nothing needs your attention.')
     ).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Needs action' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Need Action' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Resolved' })).not.toBeInTheDocument();
   });
 

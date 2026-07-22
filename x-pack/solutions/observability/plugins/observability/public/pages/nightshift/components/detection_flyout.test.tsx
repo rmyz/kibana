@@ -17,6 +17,10 @@ import type {
 import { SIGNIFICANT_EVENT_DETECTION_ATTACHMENT_TYPE } from '@kbn/significant-events-plugin/common';
 import { DetectionFlyout } from './detection_flyout';
 
+jest.mock('@kbn/kibana-react-plugin/public', () => ({
+  useUiSetting: () => 'MMM D, YYYY @ HH:mm:ss.SSS',
+}));
+
 const mockGetRedirectUrl = jest.fn(() => '/app/discover#redirect');
 const mockOpenChat = jest.fn();
 
@@ -122,7 +126,7 @@ describe('DetectionFlyout', () => {
     expect(screen.getByText('Spike')).toBeInTheDocument();
   });
 
-  it('formats the detection timestamp with the @ separator', () => {
+  it('formats the detection timestamp using the dateFormat advanced setting', () => {
     renderFlyout();
 
     expect(screen.getByText(/Jul 10, 2026 @ \d{2}:\d{2}:\d{2}/)).toBeInTheDocument();

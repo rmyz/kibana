@@ -11,6 +11,7 @@ import datetime as dt
 import json
 import os
 import random
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -22,14 +23,116 @@ KIBANA_URL = os.environ["KIBANA_URL"]
 
 AUTH_HEADER = "Basic " + base64.b64encode(ES_AUTH.encode()).decode()
 
-# Appended to seeded summaries/descriptions so Nightshift flyouts exceed the 300 code-point
-# TruncatableSummary threshold and show "Show more" during local demos.
+# Appended when needed so Nightshift flyouts exceed the 300 code-point TruncatableSummary
+# threshold and show "Show more". Entity names use backticks for inline code styling in UI.
 NIGHTSHIFT_TRUNCATION_DEMO_SUFFIX = (
-    " Additional Nightshift demo context: treat this incident as active until error budgets "
-    "recover for two consecutive hours. Compare deploy markers, canary traffic share, regional "
-    "load, checkout funnel conversion, support ticket volume, and synthetic login checks before "
-    "declaring mitigation complete or closing the incident in Nightshift."
+    " Continue watching `error-budget`, deploy markers, canary share, regional load, "
+    "funnel conversion, support tickets, and synthetic checks for two stable hours "
+    "before closing the incident."
 )
+
+EVENT_SUMMARY_INLINE_TAIL: dict[str, str] = {
+    "evt-001": (
+        " Metrics on `web-frontend` show P95 request latency climbing from ~120ms to ~890ms "
+        "within ten minutes of `api-gateway` v2.8.1. Auth middleware 5xx share rose to ~3.1% "
+        "and checkout flows through `order-processing` remain degraded."
+    ),
+    "evt-002": (
+        " Heap on `payment-service` grows from ~512MB to ~2GB between OOM kills every ~45 minutes "
+        "after batching shipped. Downstream `ledger-service` sees retry storms during restart windows."
+    ),
+    "evt-003": (
+        " Disk on `elasticsearch-data` nodes crossed the 85% watermark on `es-data-1`, "
+        "`es-data-2`, and `es-data-4`. Ingestion through `api-gateway` and `web-frontend` "
+        "pipelines is back-pressured with bulk rejections near 240/min."
+    ),
+    "evt-004": (
+        " SERVFAIL rate on `coredns` hit ~12% in `us-east-1 AZ-b` during maintenance. "
+        "`api-gateway` and `order-processing` saw cascading resolution timeouts until capacity returned."
+    ),
+    "evt-005": (
+        " Wildcard cert for `*.internal.acme.co` was within 48 hours of expiry on "
+        "`ingress-controller` after `cert-manager` renewal failed. Internal TLS for "
+        "`api-gateway` and `web-frontend` ingress was at risk."
+    ),
+    "evt-006": (
+        " Lag for `order-processors` on partitions 0–7 reached ~2.4M messages after a "
+        "`schema-registry` blip. Throughput on `order-processing` fell from ~15k/s to ~3k/s "
+        "while `fulfillment-api` backlog grows."
+    ),
+    "evt-007": (
+        " Hit rate on `cache-service` dipped for ~8 minutes during a planned node replacement. "
+        "`web-frontend` session lookups stayed within SLO; no sustained impact on `catalog-service`."
+    ),
+    "evt-008": (
+        " Empty-result rate on `search-api` climbed after the latest `catalog-service` deploy while "
+        "`web-frontend` browse still routes through `api-gateway`. Related degradation also touches "
+        "`order-processing` checkout lookups."
+    ),
+    "evt-009": (
+        " 401 share on `api-gateway` auth routes doubled during an identity provider rotation. "
+        "`web-frontend` login failures rose in parallel and `payment-service` token validation "
+        "retries stacked behind `auth-database` timeouts."
+    ),
+}
+
+INLINE_CODE_ENTITY_NAMES: tuple[str, ...] = (
+    "api-gateway",
+    "auth-database",
+    "billing-api",
+    "cache-service",
+    "catalog-service",
+    "coredns",
+    "elasticsearch-data",
+    "es-data-1",
+    "es-data-2",
+    "es-data-4",
+    "fulfillment-api",
+    "inventory-service",
+    "ledger-service",
+    "notification-service",
+    "order-processing",
+    "order-processors",
+    "payment-gateway",
+    "payment-service",
+    "schema-registry",
+    "search-api",
+    "web-frontend",
+)
+
+
+def strip_markdown_formatting(text: str) -> str:
+    """Remove legacy markdown enrichment so flyouts only render inline-code tokens."""
+    cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    cleaned = re.sub(r"(?m)^-\s+", "", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    return cleaned.strip()
+
+
+def wrap_known_entities_in_backticks(text: str) -> str:
+    wrapped = text
+    for name in sorted(INLINE_CODE_ENTITY_NAMES, key=len, reverse=True):
+        if f"`{name}`" in wrapped:
+            continue
+        wrapped = re.sub(
+            rf"(?<![`/\w]){re.escape(name)}(?![`/\w])",
+            f"`{name}`",
+            wrapped,
+        )
+    return wrapped
+
+
+def build_inline_code_summary(base_summary: str, event_id: str | None) -> str:
+    tail = EVENT_SUMMARY_INLINE_TAIL.get(event_id or "", "")
+    if not tail:
+        return base_summary.strip()
+    return f"{base_summary.strip()}{tail}"
+
+
+def normalize_event_summary(base_summary: str, event_id: str | None) -> str:
+    stripped = strip_markdown_formatting(base_summary)
+    with_tokens = wrap_known_entities_in_backticks(stripped)
+    return build_inline_code_summary(with_tokens, event_id)
 
 
 def code_point_length(text: str) -> int:
@@ -43,6 +146,351 @@ def lengthen_for_truncation_demo(text: str, min_code_points: int = 301) -> str:
     return combined
 
 
+# Downstream impact entries (distinct from causal_features). Keys match seeded event_id values.
+# Entries intentionally overlap across events so landing blast-radius chips show counts > 1.
+BLAST_RADIUS_BY_EVENT_ID: dict[str, list[dict]] = {
+    "evt-001": [
+        {
+            "type": "entity",
+            "feature_id": "order-processing",
+            "name": "order-processing",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "entity",
+            "feature_id": "catalog-service",
+            "name": "catalog-service",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "dependency",
+            "feature_id": "web-frontend-auth-db",
+            "source": "web-frontend",
+            "target": "auth-database",
+            "protocol": "HTTP",
+            "stream_name": "logs.api-gateway",
+        },
+        {
+            "type": "entity",
+            "feature_id": "notification-service",
+            "name": "notification-service",
+            "stream_name": "logs.api-gateway",
+        },
+        {
+            "type": "entity",
+            "feature_id": "search-api",
+            "name": "search-api",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "entity",
+            "feature_id": "payment-service",
+            "name": "payment-service",
+            "stream_name": "logs.payment-service",
+        },
+    ],
+    "evt-002": [
+        {
+            "type": "dependency",
+            "feature_id": "payment-to-ledger",
+            "source": "payment-service",
+            "target": "ledger-service",
+            "protocol": "gRPC",
+            "stream_name": "logs.payment-service",
+        },
+        {
+            "type": "infrastructure",
+            "feature_id": "payment-service-pods",
+            "title": "payment-service pods",
+            "workloads": ["payment-gateway", "payment-settlement-worker"],
+            "stream_name": "logs.payment-service",
+        },
+        {
+            "type": "entity",
+            "feature_id": "billing-api",
+            "name": "billing-api",
+            "stream_name": "logs.payment-service",
+        },
+        {
+            "type": "entity",
+            "feature_id": "order-processing",
+            "name": "order-processing",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "entity",
+            "feature_id": "web-frontend",
+            "name": "web-frontend",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "dependency",
+            "feature_id": "payment-auth-db",
+            "source": "payment-service",
+            "target": "auth-database",
+            "protocol": "HTTP",
+            "stream_name": "logs.payment-service",
+        },
+    ],
+    "evt-003": [
+        {
+            "type": "entity",
+            "feature_id": "api-gateway",
+            "name": "api-gateway",
+            "stream_name": "logs.api-gateway",
+        },
+        {
+            "type": "entity",
+            "feature_id": "web-frontend",
+            "name": "web-frontend",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "infrastructure",
+            "feature_id": "es-data-tier",
+            "title": "Elasticsearch data tier",
+            "workloads": ["es-data-1", "es-data-2", "es-data-4"],
+            "stream_name": "logs.elasticsearch",
+        },
+        {
+            "type": "entity",
+            "feature_id": "order-processing",
+            "name": "order-processing",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "entity",
+            "feature_id": "payment-service",
+            "name": "payment-service",
+            "stream_name": "logs.payment-service",
+        },
+        {
+            "type": "entity",
+            "feature_id": "catalog-service",
+            "name": "catalog-service",
+            "stream_name": "logs.web-frontend",
+        },
+    ],
+    "evt-004": [
+        {
+            "type": "entity",
+            "feature_id": "api-gateway",
+            "name": "api-gateway",
+            "stream_name": "logs.api-gateway",
+        },
+        {
+            "type": "entity",
+            "feature_id": "order-processing",
+            "name": "order-processing",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "dependency",
+            "feature_id": "api-gateway-coredns",
+            "source": "api-gateway",
+            "target": "coredns",
+            "protocol": "UDP",
+            "stream_name": "logs.dns-resolver",
+        },
+        {
+            "type": "entity",
+            "feature_id": "web-frontend",
+            "name": "web-frontend",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "entity",
+            "feature_id": "payment-service",
+            "name": "payment-service",
+            "stream_name": "logs.payment-service",
+        },
+    ],
+    "evt-005": [
+        {
+            "type": "entity",
+            "feature_id": "api-gateway",
+            "name": "api-gateway",
+            "stream_name": "logs.api-gateway",
+        },
+        {
+            "type": "entity",
+            "feature_id": "web-frontend",
+            "name": "web-frontend",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "entity",
+            "feature_id": "order-processing",
+            "name": "order-processing",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "dependency",
+            "feature_id": "ingress-api-gateway",
+            "source": "ingress-controller",
+            "target": "api-gateway",
+            "protocol": "TLS",
+            "stream_name": "logs.ingress-controller",
+        },
+    ],
+    "evt-006": [
+        {
+            "type": "entity",
+            "feature_id": "order-processing",
+            "name": "order-processing",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "dependency",
+            "feature_id": "order-processors-schema",
+            "source": "order-processors",
+            "target": "schema-registry",
+            "protocol": "HTTP",
+            "stream_name": "logs.kafka-cluster",
+        },
+        {
+            "type": "entity",
+            "feature_id": "fulfillment-api",
+            "name": "fulfillment-api",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "entity",
+            "feature_id": "inventory-service",
+            "name": "inventory-service",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "entity",
+            "feature_id": "web-frontend",
+            "name": "web-frontend",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "entity",
+            "feature_id": "api-gateway",
+            "name": "api-gateway",
+            "stream_name": "logs.api-gateway",
+        },
+    ],
+    "evt-007": [
+        {
+            "type": "entity",
+            "feature_id": "web-frontend",
+            "name": "web-frontend",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "entity",
+            "feature_id": "catalog-service",
+            "name": "catalog-service",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "entity",
+            "feature_id": "search-api",
+            "name": "search-api",
+            "stream_name": "logs.web-frontend",
+        },
+    ],
+    "evt-008": [
+        {
+            "type": "entity",
+            "feature_id": "catalog-service",
+            "name": "catalog-service",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "entity",
+            "feature_id": "order-processing",
+            "name": "order-processing",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "entity",
+            "feature_id": "api-gateway",
+            "name": "api-gateway",
+            "stream_name": "logs.api-gateway",
+        },
+        {
+            "type": "entity",
+            "feature_id": "payment-service",
+            "name": "payment-service",
+            "stream_name": "logs.payment-service",
+        },
+        {
+            "type": "dependency",
+            "feature_id": "search-catalog",
+            "source": "search-api",
+            "target": "catalog-service",
+            "protocol": "HTTP",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "entity",
+            "feature_id": "notification-service",
+            "name": "notification-service",
+            "stream_name": "logs.api-gateway",
+        },
+    ],
+    "evt-009": [
+        {
+            "type": "entity",
+            "feature_id": "web-frontend",
+            "name": "web-frontend",
+            "stream_name": "logs.web-frontend",
+        },
+        {
+            "type": "entity",
+            "feature_id": "payment-service",
+            "name": "payment-service",
+            "stream_name": "logs.payment-service",
+        },
+        {
+            "type": "dependency",
+            "feature_id": "gateway-auth-db",
+            "source": "api-gateway",
+            "target": "auth-database",
+            "protocol": "HTTP",
+            "stream_name": "logs.api-gateway",
+        },
+        {
+            "type": "entity",
+            "feature_id": "order-processing",
+            "name": "order-processing",
+            "stream_name": "logs.order-processing",
+        },
+        {
+            "type": "entity",
+            "feature_id": "billing-api",
+            "name": "billing-api",
+            "stream_name": "logs.payment-service",
+        },
+        {
+            "type": "entity",
+            "feature_id": "payment-gateway",
+            "name": "payment-gateway",
+            "stream_name": "logs.payment-service",
+        },
+        {
+            "type": "entity",
+            "feature_id": "ledger-service",
+            "name": "ledger-service",
+            "stream_name": "logs.payment-service",
+        },
+    ],
+}
+
+
+def apply_blast_radius_seed(obj: dict) -> None:
+    event_id = obj.get("event_id")
+    if not isinstance(event_id, str):
+        return
+    blast_radius = BLAST_RADIUS_BY_EVENT_ID.get(event_id)
+    if blast_radius is not None:
+        obj["blast_radius"] = blast_radius
+
+
 def lengthen_significant_events_ndjson(ndjson: str) -> str:
     lines = [line for line in ndjson.strip().split("\n") if line.strip()]
     output: list[str] = []
@@ -51,8 +499,11 @@ def lengthen_significant_events_ndjson(ndjson: str) -> str:
         if set(obj.keys()) == {"create"}:
             output.append(line)
             continue
+        apply_blast_radius_seed(obj)
+        event_id = obj.get("event_id") if isinstance(obj.get("event_id"), str) else None
         if isinstance(obj.get("summary"), str):
-            obj["summary"] = lengthen_for_truncation_demo(obj["summary"])
+            rich = normalize_event_summary(obj["summary"], event_id)
+            obj["summary"] = lengthen_for_truncation_demo(rich)
         for signal in obj.get("signals", []):
             if isinstance(signal, dict) and isinstance(signal.get("description"), str):
                 signal["description"] = lengthen_for_truncation_demo(signal["description"])
@@ -64,22 +515,26 @@ def prepare_ki_feature_for_seed(feature: dict) -> dict:
     prepared = dict(feature)
     description = prepared.get("description")
     if isinstance(description, str):
-        prepared["description"] = lengthen_for_truncation_demo(description)
+        title = prepared.get("title") or prepared.get("id") or "Entity"
+        rich = (
+            f"{description.strip()}\n\n"
+            f"Entity: {title}. Operational notes for Nightshift entity flyouts; "
+            "evidence lines below map to seeded stream docs."
+        )
+        prepared["description"] = lengthen_for_truncation_demo(rich)
     return prepared
 
-# (index, detection anchor in minutes ago, change point shape)
+# Backing streams are logs.* only (Nightshift demo does not use metrics streams yet).
 STREAMS = [
     ("logs.web-frontend", 120, "spike"),
     ("logs.api-gateway", 120, "step_change"),
-    ("metrics.payment-service", 180, "trend_change"),
-    ("logs.payment-service", 180, "spike"),
-    ("metrics.elasticsearch-cluster", 360, "step_change"),
-    ("logs.elasticsearch", 360, "spike"),
+    ("logs.payment-service", 180, "trend_change"),
+    ("logs.elasticsearch", 360, "step_change"),
     ("logs.dns-resolver", 1440, "dip"),
     ("logs.ingress-controller", 1440, "stationary"),
-    ("metrics.kafka-cluster", 120, "trend_change"),
+    ("logs.kafka-cluster", 120, "trend_change"),
     ("logs.order-processing", 120, "dip"),
-    ("metrics.cache-service", 120, "dip"),
+    ("logs.cache-service", 120, "dip"),
 ]
 
 BUCKET_MINUTES = 5
@@ -130,27 +585,6 @@ KI_FEATURES_BY_STREAM: dict[str, list[dict]] = {
             "meta": {"related_apm_service": "api-gateway"},
         }
     ],
-    "metrics.payment-service": [
-        {
-            "id": "payment-service",
-            "stream_name": "metrics.payment-service",
-            "type": "entity",
-            "subtype": "service",
-            "title": "payment-service",
-            "description": (
-                "Payment processing service with transaction batching enabled. "
-                "Heap grows linearly between OOM kills as uncommitted references accumulate."
-            ),
-            "properties": {"service.name": "payment-service"},
-            "confidence": 86,
-            "evidence": [
-                "service.name = payment-service",
-                "jvm.memory.heap.used grows linearly between restarts",
-            ],
-            "tags": ["payments", "jvm"],
-            "meta": {"related_apm_service": "payment-service"},
-        }
-    ],
     "logs.payment-service": [
         {
             "id": "payment-service",
@@ -159,57 +593,42 @@ KI_FEATURES_BY_STREAM: dict[str, list[dict]] = {
             "subtype": "service",
             "title": "payment-service",
             "description": (
-                "Payment service pod logs showing repeated OOMKilled events "
-                "followed by Kubernetes restarts every ~45 minutes."
+                "Payment processing service with transaction batching enabled. "
+                "Heap grows linearly between OOM kills; pod logs show repeated OOMKilled events."
             ),
             "properties": {"service.name": "payment-service"},
-            "confidence": 84,
+            "confidence": 86,
             "evidence": [
-                "kubernetes.pod.name LIKE payment-service-*",
+                "service.name = payment-service",
+                "jvm.memory.heap.used grows linearly between restarts",
                 "message LIKE *OOMKilled*",
             ],
-            "tags": ["payments", "kubernetes"],
+            "tags": ["payments", "jvm", "kubernetes"],
             "meta": {"related_apm_service": "payment-service"},
-        }
-    ],
-    "metrics.elasticsearch-cluster": [
-        {
-            "id": "elasticsearch-data",
-            "stream_name": "metrics.elasticsearch-cluster",
-            "type": "entity",
-            "subtype": "infrastructure",
-            "title": "Elasticsearch data nodes",
-            "description": (
-                "Elasticsearch data tier holding long-lived indices after an ILM migration. "
-                "Three of five nodes crossed the 85% disk high watermark."
-            ),
-            "properties": {"elasticsearch.node.role": "data"},
-            "confidence": 93,
-            "evidence": [
-                "disk_used_pct > 85 on es-data-1, es-data-2, es-data-4",
-                "write throttling engaged",
-            ],
-            "tags": ["elasticsearch", "storage"],
         }
     ],
     "logs.elasticsearch": [
         {
-            "id": "elasticsearch-cluster",
+            "id": "elasticsearch-data",
             "stream_name": "logs.elasticsearch",
             "type": "entity",
             "subtype": "infrastructure",
-            "title": "Elasticsearch cluster",
+            "title": "Elasticsearch data nodes",
             "description": (
-                "Cluster logs showing bulk write rejections once disk watermarks "
-                "engaged, back-pressuring upstream ingestion."
+                "Elasticsearch cluster logs including disk watermark and bulk rejection events. "
+                "Three of five data nodes crossed the 85% disk high watermark."
             ),
-            "properties": {"service.name": "elasticsearch"},
-            "confidence": 90,
+            "properties": {
+                "name": "elasticsearch-data",
+                "service.name": "elasticsearch",
+                "elasticsearch.node.role": "data",
+            },
+            "confidence": 93,
             "evidence": [
+                "disk_used_pct > 85 on es-data-1, es-data-2, es-data-4",
                 "message LIKE *es_rejected_execution_exception*",
-                "bulk write rejections ~240/min",
             ],
-            "tags": ["elasticsearch", "ingestion"],
+            "tags": ["elasticsearch", "storage", "ingestion"],
         }
     ],
     "logs.dns-resolver": [
@@ -252,10 +671,10 @@ KI_FEATURES_BY_STREAM: dict[str, list[dict]] = {
             "tags": ["ingress", "tls"],
         }
     ],
-    "metrics.kafka-cluster": [
+    "logs.kafka-cluster": [
         {
             "id": "order-processors",
-            "stream_name": "metrics.kafka-cluster",
+            "stream_name": "logs.kafka-cluster",
             "type": "entity",
             "subtype": "consumer_group",
             "title": "order-processors",
@@ -293,10 +712,10 @@ KI_FEATURES_BY_STREAM: dict[str, list[dict]] = {
             "meta": {"related_apm_service": "order-processing"},
         }
     ],
-    "metrics.cache-service": [
+    "logs.cache-service": [
         {
             "id": "cache-service",
-            "stream_name": "metrics.cache-service",
+            "stream_name": "logs.cache-service",
             "type": "entity",
             "subtype": "service",
             "title": "cache-service",
@@ -424,17 +843,35 @@ def enrich_doc(index: str, ts: dt.datetime, minutes_to_anchor: float, seq: int) 
     base = {"@timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ")}
 
     if index == "logs.web-frontend":
-        latency_us = 480_000 if minutes_to_anchor > 15 else 890_000 + seq * 10_000
-        base.update(
-            {
-                "service.name": "web-frontend",
-                "transaction.type": "request",
-                "transaction.duration.us": latency_us,
-                "message": f"GET /checkout responded in {latency_us // 1000}ms",
-            }
-        )
+        # evt-008 (empty search ~1h ago): anchor at 120m → minutes_to_anchor ≈ 60.
+        if 50 <= minutes_to_anchor <= 70 and seq % 3 == 0:
+            base.update(
+                {
+                    "service.name": "web-frontend",
+                    "message": "empty search results for catalog SKU facet query",
+                }
+            )
+        else:
+            latency_us = 480_000 if minutes_to_anchor > 15 else 890_000 + seq * 10_000
+            base.update(
+                {
+                    "service.name": "web-frontend",
+                    "transaction.type": "request",
+                    "transaction.duration.us": latency_us,
+                    "message": f"GET /checkout responded in {latency_us // 1000}ms",
+                }
+            )
     elif index == "logs.api-gateway":
-        status = 200 if minutes_to_anchor > 30 else (500 if seq % 3 == 0 else 502)
+        # evt-001 5xx and evt-009 401 both spike near the 120m anchor (minutes_to_anchor ≤ 30).
+        if minutes_to_anchor <= 30:
+            if seq % 4 == 1:
+                status = 401
+            elif seq % 3 == 0:
+                status = 500
+            else:
+                status = 502
+        else:
+            status = 200
         base.update(
             {
                 "service.name": "api-gateway",
@@ -442,36 +879,26 @@ def enrich_doc(index: str, ts: dt.datetime, minutes_to_anchor: float, seq: int) 
                 "message": f"auth middleware upstream response {status}",
             }
         )
-    elif index == "metrics.payment-service":
+    elif index == "logs.payment-service":
+        pod = f"payment-service-{['7d9f', 'b2c1'][seq % 2]}"
         heap = 536_870_912 + int(max(0, (180 - minutes_to_anchor) * 8_000_000))
         base.update(
             {
                 "service.name": "payment-service",
-                "jvm.memory.heap.used": min(heap, 2_147_483_648),
-            }
-        )
-    elif index == "logs.payment-service":
-        pod = f"payment-service-{['7d9f', 'b2c1'][seq % 2]}"
-        base.update(
-            {
-                "service.name": "payment-service",
                 "kubernetes.pod.name": pod,
+                "jvm.memory.heap.used": min(heap, 2_147_483_648),
                 "message": "pod killed: OOMKilled (exit code 137)" if seq % 4 == 0 else "processing batch",
             }
         )
-    elif index == "metrics.elasticsearch-cluster":
+    elif index == "logs.elasticsearch":
         total = 1_000_000_000_000
         available = int(total * (0.18 if minutes_to_anchor > 30 else 0.12))
         base.update(
             {
+                "service.name": "elasticsearch",
                 "elasticsearch.node.name": f"es-data-{1 + seq % 5}",
                 "elasticsearch.node.stats.fs.total.total_in_bytes": total,
                 "elasticsearch.node.stats.fs.total.available_in_bytes": available,
-            }
-        )
-    elif index == "logs.elasticsearch":
-        base.update(
-            {
                 "message": "es_rejected_execution_exception: rejected execution of bulk write"
                 if minutes_to_anchor <= 30
                 else "cluster state update completed",
@@ -490,13 +917,15 @@ def enrich_doc(index: str, ts: dt.datetime, minutes_to_anchor: float, seq: int) 
                 "message": "certificate *.internal.acme.co expires in 48 hours — renewal failed",
             }
         )
-    elif index == "metrics.kafka-cluster":
+    elif index == "logs.kafka-cluster":
         lag = 12_480 + int(max(0, (120 - minutes_to_anchor) * 180_000))
         base.update(
             {
+                "service.name": "kafka-cluster",
                 "kafka.consumergroup.id": "order-processors",
                 "kafka.partition.id": seq % 8,
                 "kafka.consumergroup.lag": lag,
+                "message": f"consumer lag {lag} on partition {seq % 8}",
             }
         )
     elif index == "logs.order-processing":
@@ -507,12 +936,13 @@ def enrich_doc(index: str, ts: dt.datetime, minutes_to_anchor: float, seq: int) 
                 "message": "order processed",
             }
         )
-    elif index == "metrics.cache-service":
+    elif index == "logs.cache-service":
         hit_rate = 0.62 if minutes_to_anchor <= 10 else 0.94
         base.update(
             {
                 "service.name": "cache-service",
                 "cache.hit_rate": hit_rate,
+                "message": f"cache hit_rate={hit_rate}",
             }
         )
     else:

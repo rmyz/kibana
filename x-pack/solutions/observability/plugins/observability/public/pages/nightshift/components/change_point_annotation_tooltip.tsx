@@ -7,16 +7,17 @@
 
 import React from 'react';
 import { EuiPanel, EuiText } from '@elastic/eui';
-import { formatTimestamp } from '../format_timestamp';
+import { useFormatTimestamp } from '../format_timestamp';
 
 export function ChangePointAnnotationTooltip({
   changePointLabel,
   timestamp,
 }: {
   changePointLabel: string;
-  /** ISO timestamp or millis; formatted with the Nightshift date style. */
+  /** ISO timestamp or millis; formatted with the Kibana dateFormat advanced setting. */
   timestamp: string | number;
 }): React.ReactElement {
+  const formatTimestamp = useFormatTimestamp();
   const formatted =
     typeof timestamp === 'number'
       ? formatTimestamp(new Date(timestamp).toISOString())

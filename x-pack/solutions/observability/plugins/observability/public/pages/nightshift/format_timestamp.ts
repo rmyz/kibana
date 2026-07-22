@@ -5,14 +5,15 @@
  * 2.0.
  */
 
+import { useMemo } from 'react';
 import moment from 'moment';
+import { useUiSetting } from '@kbn/kibana-react-plugin/public';
 
-/**
- * Deliberately follows the Nightshift design spec instead of the `dateFormat`
- * advanced setting. `dateFormat:tz` is still respected — core sets moment's
- * default timezone from it.
- */
-export const NIGHTSHIFT_TIMESTAMP_FORMAT = 'MMM D, YYYY @ HH:mm:ss';
+export const formatTimestamp = (timestamp: string, dateFormat: string): string =>
+  moment(timestamp).format(dateFormat);
 
-export const formatTimestamp = (timestamp: string): string =>
-  moment(timestamp).format(NIGHTSHIFT_TIMESTAMP_FORMAT);
+export const useFormatTimestamp = (): ((timestamp: string) => string) => {
+  const dateFormat = useUiSetting<string>('dateFormat');
+
+  return useMemo(() => (timestamp: string) => formatTimestamp(timestamp, dateFormat), [dateFormat]);
+};

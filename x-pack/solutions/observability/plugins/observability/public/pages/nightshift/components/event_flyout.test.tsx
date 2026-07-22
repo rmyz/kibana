@@ -12,6 +12,10 @@ import { I18nProvider } from '@kbn/i18n-react';
 import { EventFlyout } from './event_flyout';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
 
+jest.mock('@kbn/kibana-react-plugin/public', () => ({
+  useUiSetting: () => 'MMM D, YYYY @ HH:mm:ss.SSS',
+}));
+
 jest.mock('@kbn/investigation-output', () => ({
   // Avoid requireActual — it pulls a deep Kibana React graph that is brittle in unit tests.
   InvestigationOutput: () => null,
@@ -133,7 +137,7 @@ describe('EventFlyout', () => {
     expect(screen.getByText('Investigated')).toBeInTheDocument();
   });
 
-  it('formats the event timestamp with the @ separator', () => {
+  it('formats the event timestamp using the dateFormat advanced setting', () => {
     renderFlyout();
 
     expect(screen.getAllByText(/Jul 10, 2026 @ \d{2}:\d{2}:\d{2}/).length).toBeGreaterThan(0);

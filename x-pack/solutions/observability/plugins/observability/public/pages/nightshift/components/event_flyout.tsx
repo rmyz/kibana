@@ -29,7 +29,7 @@ import { EventFlyoutChatFooter } from './event_flyout_chat_footer';
 import { InvestigationStatusBadge } from './investigation_status_badge';
 import { TruncatableSummary } from './truncatable_summary';
 import { NightshiftMarkIcon } from './nightshift_mark_icon';
-import { formatTimestamp } from '../format_timestamp';
+import { useFormatTimestamp } from '../format_timestamp';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
 import { findDetectionSignal } from '../resolve_detection_signal';
 import { isNeedsActionStatus } from '../significant_event_status';
@@ -42,6 +42,7 @@ export interface EventFlyoutProps {
 
 export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
+  const formatTimestamp = useFormatTimestamp();
   const { agentBuilder } = useKibana().services;
   const [selectedDetectionId, setSelectedDetectionId] = useState<string>();
   const lifecycleQuery = useFetchEventLifecycle(event.event_uuid);

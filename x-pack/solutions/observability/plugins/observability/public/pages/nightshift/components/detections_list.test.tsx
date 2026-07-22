@@ -13,6 +13,10 @@ import { DetectionsList } from './detections_list';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
 import { useFetchStreamFeatures } from '../hooks/use_fetch_stream_features';
 
+jest.mock('@kbn/kibana-react-plugin/public', () => ({
+  useUiSetting: () => 'MMM D, YYYY @ HH:mm:ss.SSS',
+}));
+
 jest.mock('../hooks/use_fetch_event_lifecycle');
 jest.mock('../hooks/use_fetch_stream_features');
 

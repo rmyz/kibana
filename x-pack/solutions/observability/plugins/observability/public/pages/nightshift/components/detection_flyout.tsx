@@ -34,7 +34,7 @@ import type {
   SignalEntry,
   SignificantEvent,
 } from '@kbn/significant-events-schema';
-import { formatTimestamp } from '../format_timestamp';
+import { useFormatTimestamp } from '../format_timestamp';
 import { getChangePointLabel } from '../change_point';
 import { ChangePointTrendChart } from './change_point_visualization';
 import { EntityChip } from './entity_chip';
@@ -65,6 +65,7 @@ export function DetectionFlyout({
   onClose,
 }: DetectionFlyoutProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
+  const formatTimestamp = useFormatTimestamp();
   const { share, agentBuilder } = useKibana().services;
   const [selectedEntity, setSelectedEntity] = useState<DetectionEntityRef | undefined>();
 

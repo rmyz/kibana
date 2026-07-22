@@ -23,7 +23,7 @@ import type {
   SignificantEventInvestigation,
 } from '@kbn/significant-events-schema';
 import { useKibana } from '../../../utils/kibana_react';
-import { formatTimestamp } from '../format_timestamp';
+import { useFormatTimestamp } from '../format_timestamp';
 
 export interface EventInvestigationProps {
   event: SignificantEvent;
@@ -70,6 +70,7 @@ function InvestigationRow({
   initialIsOpen: boolean;
 }): React.ReactElement {
   const { http } = useKibana().services;
+  const formatTimestamp = useFormatTimestamp();
   const {
     started_at: startedAt,
     completed_at: completedAt,

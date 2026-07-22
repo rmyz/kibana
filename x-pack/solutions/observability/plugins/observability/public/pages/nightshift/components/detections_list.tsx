@@ -29,7 +29,7 @@ import type {
 } from '@kbn/significant-events-schema';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
 import { useFetchStreamFeatures } from '../hooks/use_fetch_stream_features';
-import { formatTimestamp } from '../format_timestamp';
+import { useFormatTimestamp } from '../format_timestamp';
 import { getChangePointLabel } from '../change_point';
 import { ChangePointSparkline } from './change_point_visualization';
 import { getDetectionEntities } from '../get_detection_entities';
@@ -66,6 +66,7 @@ function DetectionCard({
   onClick?: (detection: LifecycleDetection) => void;
 }) {
   const { euiTheme } = useEuiTheme();
+  const formatTimestamp = useFormatTimestamp();
   const changePointLabel = getChangePointLabel(detection.change_point_type);
   const { data: streamFeatures = [] } = useFetchStreamFeatures(detection.stream_name);
   const entityLabels = useMemo(() => {
