@@ -48,13 +48,12 @@ Checkout deploy introduced a regression.
 
 describe('investigation_presentation', () => {
   describe('getInvestigationWorkflowStatusLabel', () => {
-    it('returns Investigated or Investigating only', () => {
+    it('returns workflow labels for each investigation status', () => {
       expect(getInvestigationWorkflowStatusLabel('complete')).toBe('Investigated');
       expect(getInvestigationWorkflowStatusLabel('running')).toBe('Investigating');
-      expect(getInvestigationWorkflowStatusLabel('failed')).toBe('Investigating');
-      expect(getInvestigationWorkflowStatusLabel('loading', '2026-07-10T12:05:00Z')).toBe(
-        'Investigated'
-      );
+      expect(getInvestigationWorkflowStatusLabel('failed')).toBe('Investigation failed');
+      expect(getInvestigationWorkflowStatusLabel('unavailable')).toBe('Investigation unavailable');
+      expect(getInvestigationWorkflowStatusLabel('loading')).toBe('Loading investigation');
     });
   });
 

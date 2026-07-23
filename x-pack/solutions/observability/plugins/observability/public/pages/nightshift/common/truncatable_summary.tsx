@@ -56,12 +56,16 @@ export function TruncatableSummary({
           ${fontSize ? `font-size: ${fontSize};` : ''}
         `}
       >
-        <InvestigationFormattedText
-          text={displaySummary}
-          textSize={fontSize ? undefined : textSize}
-          fontSize={fontSize}
-          bold={bold}
-        />
+        {isSummaryLong && !expanded ? (
+          displaySummary
+        ) : (
+          <InvestigationFormattedText
+            text={displaySummary}
+            textSize={fontSize ? undefined : textSize}
+            fontSize={fontSize}
+            bold={bold}
+          />
+        )}
       </EuiText>
       {isSummaryLong && (
         // eslint-disable-next-line @elastic/eui/require-href-for-link

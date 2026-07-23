@@ -8,16 +8,15 @@
 import { css } from '@emotion/react';
 import React from 'react';
 import { useEuiTheme } from '@elastic/eui';
+import { createFadeOverlayBackground } from '../common/fade_overlay_background';
 import {
   nightshiftBackgroundColorTransition,
   nightshiftOpacityTransition,
   nightshiftReducedMotionStyles,
 } from '../common/nightshift_transition';
+import { useKibana } from '../../../utils/kibana_react';
 
 const investigationRowHoverActionOverlayClassName = 'nightshiftInvestigationRowHoverActionOverlay';
-
-const createFadeOverlayBackground = (backgroundColor: string): string =>
-  `linear-gradient(90deg, transparent 0%, ${backgroundColor} 40%, ${backgroundColor} 100%)`;
 
 export interface InvestigationRowHoverActionProps {
   children: React.ReactNode;
@@ -33,9 +32,11 @@ export function InvestigationRowHoverAction({
   hoverOverlayBackground,
 }: InvestigationRowHoverActionProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
+  const { agentBuilder } = useKibana().services;
   const baseOverlayBackground = overlayBackground ?? euiTheme.colors.backgroundBasePlain;
   const hoverOverlayBackgroundColor =
     hoverOverlayBackground ?? euiTheme.colors.backgroundBaseSubdued;
+  const shouldShowActionOverlay = Boolean(action && agentBuilder);
 
   return (
     <div
@@ -44,6 +45,8 @@ export function InvestigationRowHoverAction({
         position: relative;
         width: 100%;
 
+        ${shouldShowActionOverlay
+          ? `
         &:hover
           .${investigationRowHoverActionOverlayClassName},
           &:focus-within
@@ -51,11 +54,12 @@ export function InvestigationRowHoverAction({
           opacity: 1;
           pointer-events: auto;
           background: ${createFadeOverlayBackground(hoverOverlayBackgroundColor)};
-        }
+        }`
+          : ''}
       `}
     >
       {children}
-      {action && (
+      {shouldShowActionOverlay && (
         <div
           className={investigationRowHoverActionOverlayClassName}
           css={css`

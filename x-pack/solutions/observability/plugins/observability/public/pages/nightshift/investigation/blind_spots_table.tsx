@@ -71,11 +71,16 @@ export function BlindSpotsTable({
           <EuiHorizontalRule margin="none" />
         </>
       )}
-      <div role="table">
+      <ul
+        css={css`
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        `}
+      >
         {items.map((item, index) => (
-          <div
-            key={`${item.title}-${index}`}
-            role="row"
+          <li
+            key={`${item.title}-${item.description}`}
             data-test-subj={`${testSubj}Row-${index}`}
             css={css`
               ${index < items.length - 1 ? `border-bottom: ${euiTheme.border.thin};` : ''}
@@ -101,17 +106,15 @@ export function BlindSpotsTable({
                   />
                 }
               >
-                <div role="cell">
-                  <InvestigationFormattedText
-                    text={formatBlindSpotMarkdown(item)}
-                    fontSize={bodyFontSize}
-                  />
-                </div>
+                <InvestigationFormattedText
+                  text={formatBlindSpotMarkdown(item)}
+                  fontSize={bodyFontSize}
+                />
               </InvestigationRowHoverAction>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </EuiPanel>
   );
 }

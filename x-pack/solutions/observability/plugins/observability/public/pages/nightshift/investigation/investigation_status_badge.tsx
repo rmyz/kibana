@@ -14,7 +14,13 @@ import {
   useSvgAiGradient,
 } from '@kbn/shared-ux-ai-components';
 import { i18n } from '@kbn/i18n';
+import type { InvestigationStatus } from '@kbn/investigation-output';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
+import {
+  getInvestigationWorkflowStatusLabel,
+  isInvestigationInvestigated,
+  isInvestigationTerminalFailure,
+} from '../common/investigation_progress_status';
 import {
   getInvestigationStatusLabel,
   isEventInvestigated,
@@ -301,6 +307,21 @@ function InvestigatedStatus({ label }: { label: string }) {
   return <GradientOutlinedStatusBadge label={label} testSubj="nightshiftInvestigatedStatus" />;
 }
 
+function InvestigationTerminalFailureStatus({ label }: { label: string }) {
+  const { euiTheme } = useEuiTheme();
+
+  return (
+    <EuiBadge
+      color="hollow"
+      css={css`
+        color: ${euiTheme.colors.textSubdued};
+      `}
+    >
+      {label}
+    </EuiBadge>
+  );
+}
+
 /**
  * Animated "Investigating" badge while the latest investigation is in progress,
  * AI-gradient "Investigated" badge once it has completed. Shared between the
@@ -308,16 +329,31 @@ function InvestigatedStatus({ label }: { label: string }) {
  */
 export function InvestigationStatusBadge({
   event,
+  investigationStatus,
 }: {
   event: Pick<SignificantEvent, 'investigations'>;
+  investigationStatus?: InvestigationStatus;
 }): React.ReactElement {
-  const label = getInvestigationStatusLabel(event);
+  const isInvestigated =
+    investigationStatus != null
+      ? isInvestigationInvestigated(investigationStatus)
+      : isEventInvestigated(event);
+  const label =
+    investigationStatus != null
+      ? getInvestigationWorkflowStatusLabel(investigationStatus)
+      : getInvestigationStatusLabel(event);
+  const isTerminalFailure =
+    investigationStatus != null && isInvestigationTerminalFailure(investigationStatus);
 
-  return isEventInvestigated(event) ? (
-    <InvestigatedStatus label={label} />
-  ) : (
-    <InvestigatingStatus label={label} />
-  );
+  if (isInvestigated) {
+    return <InvestigatedStatus label={label} />;
+  }
+
+  if (isTerminalFailure) {
+    return <InvestigationTerminalFailureStatus label={label} />;
+  }
+
+  return <InvestigatingStatus label={label} />;
 }
 
 export {

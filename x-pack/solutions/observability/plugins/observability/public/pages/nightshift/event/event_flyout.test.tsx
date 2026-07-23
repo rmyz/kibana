@@ -162,6 +162,7 @@ describe('EventFlyout', () => {
     });
 
     expect(screen.getAllByText('Investigated').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('nightshiftInvestigatedStatus')).toBeInTheDocument();
   });
 
   it('formats the event timestamp using the dateFormat advanced setting', () => {

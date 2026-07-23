@@ -51,6 +51,7 @@ import {
   NIGHTSHIFT_INLINE_CODE_FONT_SIZE,
 } from './investigation_formatted_text';
 import { TruncatableSummary } from '../common/truncatable_summary';
+import { truncateTextPreview } from '../common/truncate_text_preview';
 import { FlyoutSectionTitle } from '../common/flyout_section_title';
 import {
   GradientOutlinedStatusBadge,
@@ -74,6 +75,7 @@ import {
   getInvestigationWorkflowStatusLabel,
   getInvestigationTimeLabel,
   isInvestigationInvestigated,
+  isInvestigationTerminalFailure,
   mapBlindSpots,
   parseInvestigationRecommendations,
   sortInvestigationHypotheses,
@@ -119,18 +121,6 @@ const flyoutCodeBlockCss = css`
 
 /** ~2 lines of 14px body text in the investigation flyout recommendations list. */
 const RECOMMENDATION_TITLE_PREVIEW_MAX_LENGTH = 100;
-
-const truncateTextPreview = (
-  text: string,
-  maxLength: number
-): { preview: string; isTruncated: boolean } => {
-  const characters = Array.from(text);
-  if (characters.length <= maxLength) {
-    return { preview: text, isTruncated: false };
-  }
-
-  return { preview: `${characters.slice(0, maxLength).join('')}...`, isTruncated: true };
-};
 
 function FlyoutFormattedText(
   props: Omit<React.ComponentProps<typeof InvestigationFormattedText>, 'textSize' | 'fontSize'>
@@ -184,8 +174,8 @@ function InvestigationFlyoutRow({
   const [isOpen, setIsOpen] = useState(false);
   const contentId = useGeneratedHtmlId({ prefix: 'nightshiftInvestigationFlyoutRow' });
   const isExpandable = expandableContent != null;
-  const shouldShowToggle = showToggle ?? isExpandable;
   const canToggle = isExpandable && !isToggleDisabled;
+  const shouldShowToggle = (showToggle ?? isExpandable) && canToggle;
   const expandRowLabel = isOpen
     ? i18n.translate('xpack.observability.nightshift.investigation.collapseRow', {
         defaultMessage: 'Collapse row',
@@ -207,7 +197,7 @@ function InvestigationFlyoutRow({
             <EuiToolTip content={canToggle ? expandRowLabel : undefined} disableScreenReaderOutput>
               <EuiButtonIcon
                 iconType="arrowRight"
-                aria-label={expandRowLabel}
+                aria-label={canToggle ? expandRowLabel : undefined}
                 aria-expanded={canToggle ? isOpen : false}
                 aria-controls={canToggle ? contentId : undefined}
                 color="text"
@@ -252,16 +242,16 @@ function InvestigationFlyoutRow({
 
 function InvestigationFlyoutBadge({
   status,
-  completedAt,
 }: {
   status: InvestigationStatus;
   completedAt?: string;
 }): React.ReactElement {
   const { euiTheme } = useEuiTheme();
-  const isInvestigated = isInvestigationInvestigated(status, completedAt);
+  const isInvestigated = isInvestigationInvestigated(status);
+  const isTerminalFailure = isInvestigationTerminalFailure(status);
   const statusLabel = isInvestigated
     ? getInvestigationCompleteStatusLabel()
-    : getInvestigationWorkflowStatusLabel(status, completedAt);
+    : getInvestigationWorkflowStatusLabel(status);
 
   if (isInvestigated) {
     return (
@@ -269,6 +259,20 @@ function InvestigationFlyoutBadge({
         label={statusLabel}
         testSubj="nightshiftInvestigationFlyoutCompleteBadge"
       />
+    );
+  }
+
+  if (isTerminalFailure) {
+    return (
+      <EuiBadge color="hollow" data-test-subj="nightshiftInvestigationFlyoutProgressBadge">
+        <span
+          css={css`
+            color: ${euiTheme.colors.textSubdued};
+          `}
+        >
+          {statusLabel}
+        </span>
+      </EuiBadge>
     );
   }
 

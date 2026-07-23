@@ -11,12 +11,12 @@ import { i18n } from '@kbn/i18n';
 import { useKibana } from '../../../utils/kibana_react';
 
 export interface FlyoutShareUrlButtonProps {
-  url: string;
+  getShareUrl: () => string;
   testSubj?: string;
 }
 
 export function FlyoutShareUrlButton({
-  url,
+  getShareUrl,
   testSubj = 'nightshiftFlyoutShareUrlButton',
 }: FlyoutShareUrlButtonProps): React.ReactElement {
   const { notifications } = useKibana().services;
@@ -26,7 +26,7 @@ export function FlyoutShareUrlButton({
   });
 
   const onShareClick = useCallback(() => {
-    const copied = copyToClipboard(url);
+    const copied = copyToClipboard(getShareUrl());
     if (copied) {
       notifications.toasts.addSuccess({
         title: i18n.translate('xpack.observability.nightshift.flyout.shareUrlSuccess', {
@@ -34,7 +34,7 @@ export function FlyoutShareUrlButton({
         }),
       });
     }
-  }, [notifications.toasts, url]);
+  }, [getShareUrl, notifications.toasts]);
 
   return (
     <EuiFlexItem grow={false}>

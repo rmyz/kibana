@@ -10,6 +10,7 @@ import { useQuery, type UseQueryResult } from '@kbn/react-query';
 import type { HttpSetup } from '@kbn/core/public';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
 import { useKibana } from '../../../utils/kibana_react';
+import { NIGHTSHIFT_LANDING_SEVERITY } from '../common/nightshift_constants';
 
 /**
  * The significant-events events endpoint returns a paginated envelope. We mirror the
@@ -52,7 +53,7 @@ const fetchSignificantEvents = async ({
           perPage: NIGHTSHIFT_EVENTS_PAGE_SIZE,
           from,
           to,
-          severity: '80-critical',
+          severity: NIGHTSHIFT_LANDING_SEVERITY,
         },
         signal,
       }

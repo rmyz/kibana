@@ -52,10 +52,6 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
   const formatTimestamp = useFormatTimestamp();
   const { agentBuilder, http } = useKibana().services;
   const [selectedDetectionId, setSelectedDetectionId] = useState<string>();
-  const shareUrl = useMemo(
-    () => buildNightshiftEventFlyoutShareUrl(event.event_uuid),
-    [event.event_uuid]
-  );
   const lifecycleQuery = useFetchEventLifecycle(event.event_uuid);
   const latestInvestigation = useMemo(() => event.investigations?.at(-1), [event.investigations]);
 
@@ -123,7 +119,10 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
       data-test-subj="nightshiftEventFlyout"
     >
       <FlyoutToolbarHeader>
-        <FlyoutShareUrlButton url={shareUrl} testSubj="nightshiftEventFlyoutShareUrlButton" />
+        <FlyoutShareUrlButton
+          getShareUrl={() => buildNightshiftEventFlyoutShareUrl(event.event_uuid)}
+          testSubj="nightshiftEventFlyoutShareUrlButton"
+        />
         <EuiFlexItem grow={false}>
           <EuiToolTip content={closeFlyoutLabel} disableScreenReaderOutput>
             <EuiButtonIcon
@@ -184,7 +183,10 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
             </EuiFlexItem>
           )}
           <EuiFlexItem grow={false}>
-            <InvestigationStatusBadge event={event} />
+            <InvestigationStatusBadge
+              event={event}
+              investigationStatus={latestInvestigation ? investigationStatus : undefined}
+            />
           </EuiFlexItem>
         </EuiFlexGroup>
         <EuiSpacer size="s" />

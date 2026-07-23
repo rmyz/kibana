@@ -29,6 +29,7 @@ import { BlindSpotsTable } from './blind_spots_table';
 import { InvestigationCompleteStatus, InvestigatingStatusDots } from './investigation_status_badge';
 import { InvestigationFormattedText } from './investigation_formatted_text';
 import { TruncatableSummary } from '../common/truncatable_summary';
+import { createFadeOverlayBackground } from '../common/fade_overlay_background';
 import {
   nightshiftOpacityTransition,
   nightshiftReducedMotionStyles,
@@ -40,6 +41,7 @@ import {
   getInvestigationWorkflowStatusLabel,
   getInvestigationTimeLabel,
   isInvestigationInvestigated,
+  isInvestigationTerminalFailure,
   getPrimaryRecommendation,
   mapBlindSpots,
   type InvestigationRecommendation,
@@ -47,9 +49,6 @@ import {
 
 const INLINE_BLIND_SPOT_LIMIT = 4;
 const tryNextRowActionClassName = 'nightshiftInvestigationTryNextRowAction';
-
-const createTryNextFadeOverlayBackground = (backgroundColor: string): string =>
-  `linear-gradient(90deg, transparent 0%, ${backgroundColor} 40%, ${backgroundColor} 100%)`;
 
 const recommendationChatTooltip = i18n.translate(
   'xpack.observability.nightshift.investigation.recommendationChatTooltip',
@@ -69,8 +68,9 @@ function InvestigationStatusRow({
   endedAt?: number | string;
   isRunning: boolean;
 }): React.ReactElement {
-  const isInvestigated = isInvestigationInvestigated(status, endedAt);
-  const statusLabel = getInvestigationWorkflowStatusLabel(status, endedAt);
+  const isInvestigated = isInvestigationInvestigated(status);
+  const isTerminalFailure = isInvestigationTerminalFailure(status);
+  const statusLabel = getInvestigationWorkflowStatusLabel(status);
   const timeLabel = getInvestigationTimeLabel({
     startedAt,
     endedAt,
@@ -88,6 +88,10 @@ function InvestigationStatusRow({
                 testSubj="nightshiftInvestigationStatusIcon"
               />
             </h4>
+          </EuiTitle>
+        ) : isTerminalFailure ? (
+          <EuiTitle size="xxs">
+            <h4>{statusLabel}</h4>
           </EuiTitle>
         ) : (
           <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
@@ -124,6 +128,7 @@ function TryNextPanel({
   const openRecommendationInChat = useCallback(() => {
     agentBuilder?.openChat(buildRecommendationChatOptions(recommendation, 'nightshift-try-next'));
   }, [agentBuilder, recommendation]);
+  const shouldShowChatAction = Boolean(agentBuilder);
 
   return (
     <EuiPanel hasBorder paddingSize="m" data-test-subj="nightshiftInvestigationTryNextPanel">
@@ -158,10 +163,13 @@ function TryNextPanel({
           position: relative;
           width: 100%;
 
+          ${shouldShowChatAction
+            ? `
           &:hover .${tryNextRowActionClassName}, &:focus-within .${tryNextRowActionClassName} {
             opacity: 1;
             pointer-events: auto;
-          }
+          }`
+            : ''}
         `}
       >
         <InvestigationFormattedText text={recommendation.title} bold />
@@ -183,34 +191,36 @@ function TryNextPanel({
             </EuiCodeBlock>
           </>
         )}
-        <div
-          className={tryNextRowActionClassName}
-          css={css`
-            align-items: flex-start;
-            background: ${createTryNextFadeOverlayBackground(euiTheme.colors.backgroundBasePlain)};
-            display: flex;
-            opacity: 0;
-            padding-left: ${euiTheme.size.xl};
-            pointer-events: none;
-            position: absolute;
-            right: 0;
-            top: 0;
-            transition: ${nightshiftOpacityTransition(euiTheme)};
+        {shouldShowChatAction && (
+          <div
+            className={tryNextRowActionClassName}
+            css={css`
+              align-items: flex-start;
+              background: ${createFadeOverlayBackground(euiTheme.colors.backgroundBasePlain)};
+              display: flex;
+              opacity: 0;
+              padding-left: ${euiTheme.size.xl};
+              pointer-events: none;
+              position: absolute;
+              right: 0;
+              top: 0;
+              transition: ${nightshiftOpacityTransition(euiTheme)};
 
-            @media (prefers-reduced-motion: reduce) {
-              opacity: 1;
-              pointer-events: auto;
-            }
+              @media (prefers-reduced-motion: reduce) {
+                opacity: 1;
+                pointer-events: auto;
+              }
 
-            ${nightshiftReducedMotionStyles}
-          `}
-        >
-          <InvestigationItemChatButton
-            tooltip={recommendationChatTooltip}
-            testSubj="nightshiftInvestigationTryNextChatButton"
-            onClick={openRecommendationInChat}
-          />
-        </div>
+              ${nightshiftReducedMotionStyles}
+            `}
+          >
+            <InvestigationItemChatButton
+              tooltip={recommendationChatTooltip}
+              testSubj="nightshiftInvestigationTryNextChatButton"
+              onClick={openRecommendationInChat}
+            />
+          </div>
+        )}
       </div>
     </EuiPanel>
   );

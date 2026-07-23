@@ -10,7 +10,13 @@ import { i18n } from '@kbn/i18n';
 import type { InvestigationHypothesis, InvestigationState } from '@kbn/significant-events-schema';
 import type { InvestigationStatus } from '@kbn/investigation-output';
 import { formatShortTime } from '../common/format_timestamp';
-import { getInvestigationProgressStatusLabel } from '../event/significant_event_status';
+
+export {
+  getInvestigationProgressStatusLabel,
+  getInvestigationWorkflowStatusLabel,
+  isInvestigationInvestigated,
+  isInvestigationTerminalFailure,
+} from '../common/investigation_progress_status';
 
 export interface InvestigationRecommendation {
   title: string;
@@ -71,16 +77,6 @@ export const getInvestigationTimeLabel = ({
     values: { time, duration },
   });
 };
-
-export const isInvestigationInvestigated = (
-  status: InvestigationStatus,
-  completedAt?: number | string | null
-): boolean => status === 'complete' || completedAt != null;
-
-export const getInvestigationWorkflowStatusLabel = (
-  status: InvestigationStatus,
-  completedAt?: number | string | null
-): string => getInvestigationProgressStatusLabel(isInvestigationInvestigated(status, completedAt));
 
 export const getInvestigationCompleteStatusLabel = (): string =>
   i18n.translate('xpack.observability.nightshift.investigation.statusComplete', {

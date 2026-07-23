@@ -41,7 +41,6 @@ import { NightshiftHeader } from './nightshift_header';
 import { NIGHTSHIFT_EVENT_UUID_QUERY_PARAM } from '../common/nightshift_url_params';
 
 // Kept in the URL so a refresh or a shared link restores the open flyout.
-const SELECTED_EVENT_QUERY_PARAM = NIGHTSHIFT_EVENT_UUID_QUERY_PARAM;
 const BLAST_RADIUS_QUERY_PARAM = 'blastRadius';
 
 export function NightshiftApp(): React.ReactElement {
@@ -59,7 +58,7 @@ export function NightshiftApp(): React.ReactElement {
   // Derived from the freshest fetched list (not a click-time snapshot), so
   // background refetches keep the open flyout current.
   const selectedEventUuid = useMemo(
-    () => new URLSearchParams(search).get(SELECTED_EVENT_QUERY_PARAM) ?? undefined,
+    () => new URLSearchParams(search).get(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM) ?? undefined,
     [search]
   );
   const selectedEvent = useMemo(
@@ -88,7 +87,7 @@ export function NightshiftApp(): React.ReactElement {
   const handleEventClick = useCallback(
     (event: SignificantEvent) => {
       const params = new URLSearchParams(history.location.search);
-      params.set(SELECTED_EVENT_QUERY_PARAM, event.event_uuid);
+      params.set(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM, event.event_uuid);
       history.replace({ search: params.toString() });
     },
     [history]
@@ -96,7 +95,7 @@ export function NightshiftApp(): React.ReactElement {
 
   const handleFlyoutClose = useCallback(() => {
     const params = new URLSearchParams(history.location.search);
-    params.delete(SELECTED_EVENT_QUERY_PARAM);
+    params.delete(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM);
     history.replace({ search: params.toString() });
   }, [history]);
 
@@ -162,8 +161,8 @@ export function NightshiftApp(): React.ReactElement {
     if (selectedEventUuid && !selectedEvent && !isLoading) {
       setEventNotFound(true);
       const params = new URLSearchParams(history.location.search);
-      if (params.has(SELECTED_EVENT_QUERY_PARAM)) {
-        params.delete(SELECTED_EVENT_QUERY_PARAM);
+      if (params.has(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM)) {
+        params.delete(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM);
         history.replace({ search: params.toString() });
       }
       return;

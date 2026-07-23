@@ -18,4 +18,16 @@ describe('nightshift_url_params', () => {
       `${window.location.origin}/app/observability/nightshift?blastRadius=logs.web&${NIGHTSHIFT_EVENT_UUID_QUERY_PARAM}=evt-uuid-001`
     );
   });
+
+  it('replaces an existing eventUuid when building a share URL', () => {
+    window.history.pushState(
+      {},
+      '',
+      `/app/observability/nightshift?${NIGHTSHIFT_EVENT_UUID_QUERY_PARAM}=old-uuid&blastRadius=logs.web`
+    );
+
+    expect(buildNightshiftEventFlyoutShareUrl('evt-uuid-001')).toBe(
+      `${window.location.origin}/app/observability/nightshift?${NIGHTSHIFT_EVENT_UUID_QUERY_PARAM}=evt-uuid-001&blastRadius=logs.web`
+    );
+  });
 });

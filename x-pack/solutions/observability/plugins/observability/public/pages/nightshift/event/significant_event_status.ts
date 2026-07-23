@@ -5,12 +5,14 @@
  * 2.0.
  */
 
-import { i18n } from '@kbn/i18n';
 import {
   SIGNIFICANT_EVENT_STATUS_OPTIONS,
   type SignificantEvent,
   type SignificantEventStatus,
 } from '@kbn/significant-events-schema';
+import { getInvestigationProgressStatusLabel } from '../common/investigation_progress_status';
+
+export { getInvestigationProgressStatusLabel };
 
 /**
  * Nightshift surfaces two triage buckets derived from `@kbn/significant-events-schema`
@@ -95,15 +97,6 @@ export const getLatestInvestigation = (
 
 export const isEventInvestigated = (event: Pick<SignificantEvent, 'investigations'>): boolean =>
   getLatestInvestigation(event)?.completed_at != null;
-
-export const getInvestigationProgressStatusLabel = (isInvestigated: boolean): string =>
-  isInvestigated
-    ? i18n.translate('xpack.observability.nightshift.event.investigatedStatusLabel', {
-        defaultMessage: 'Investigated',
-      })
-    : i18n.translate('xpack.observability.nightshift.event.investigatingStatusLabel', {
-        defaultMessage: 'Investigating',
-      });
 
 export const getInvestigationStatusLabel = (
   event: Pick<SignificantEvent, 'investigations'>
