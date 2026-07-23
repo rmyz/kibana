@@ -28,7 +28,7 @@ export const NIGHTSHIFT_EVENTS_PAGE_SIZE = 1000;
 const NIGHTSHIFT_LOOKBACK_DAYS = 30;
 const MAX_FETCH_PAGES = 10;
 
-const fetchAllSignificantEvents = async ({
+const fetchSignificantEvents = async ({
   http,
   signal,
   from,
@@ -52,6 +52,7 @@ const fetchAllSignificantEvents = async ({
           perPage: NIGHTSHIFT_EVENTS_PAGE_SIZE,
           from,
           to,
+          severity: '80-critical',
         },
         signal,
       }
@@ -87,7 +88,7 @@ export const useFetchSignificantEvents = (): UseQueryResult<
       const from = moment().subtract(NIGHTSHIFT_LOOKBACK_DAYS, 'days').toISOString();
       const to = moment().toISOString();
 
-      return fetchAllSignificantEvents({ http, signal, from, to });
+      return fetchSignificantEvents({ http, signal, from, to });
     },
   });
 };
