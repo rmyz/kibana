@@ -5,9 +5,10 @@
  * 2.0.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   EuiButtonEmpty,
+  EuiCallOut,
   EuiFlexGroup,
   EuiFlexItem,
   EuiSpacer,
@@ -15,32 +16,33 @@ import {
   EuiTitle,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import { useInvestigationState } from '@kbn/investigation-output';
+import type { InvestigationStatus } from '@kbn/investigation-output';
 import type {
+  InvestigationState,
   SignificantEvent,
   SignificantEventInvestigation,
 } from '@kbn/significant-events-schema';
-import { useKibana } from '../../../utils/kibana_react';
 import { InvestigationFlyout } from '../investigation/investigation_flyout';
 import { InvestigationSummaryCard } from '../investigation/investigation_summary_card';
 
 export interface EventInvestigationProps {
   event: SignificantEvent;
+  investigation?: SignificantEventInvestigation;
+  status: InvestigationStatus;
+  state?: InvestigationState;
+  error?: string;
+  conversationId?: string;
 }
 
-const isInvestigationRunning = (investigation: SignificantEventInvestigation): boolean =>
-  investigation.completed_at == null;
-
-export function EventInvestigation({ event }: EventInvestigationProps): React.ReactElement {
-  const { http } = useKibana().services;
+export function EventInvestigation({
+  event,
+  investigation,
+  status,
+  state,
+  error,
+  conversationId,
+}: EventInvestigationProps): React.ReactElement {
   const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
-  const investigation = useMemo(() => (event.investigations ?? []).at(-1), [event.investigations]);
-
-  const { state, error, status, conversationId } = useInvestigationState({
-    http,
-    workflowExecutionId: investigation?.workflow_execution_id,
-    isRunning: investigation ? isInvestigationRunning(investigation) : false,
-  });
 
   const openFlyout = () => {
     setIsFlyoutOpen(true);
@@ -58,7 +60,7 @@ export function EventInvestigation({ event }: EventInvestigationProps): React.Re
             </h3>
           </EuiTitle>
         </EuiFlexItem>
-        {investigation && (
+        {investigation?.workflow_execution_id && (
           <EuiFlexItem grow={false}>
             <EuiButtonEmpty
               size="xs"
@@ -87,6 +89,30 @@ export function EventInvestigation({ event }: EventInvestigationProps): React.Re
             )}
           </p>
         </EuiText>
+      ) : !investigation.workflow_execution_id ? (
+        <EuiCallOut
+          announceOnMount
+          color="warning"
+          iconType="warning"
+          size="s"
+          title={i18n.translate(
+            'xpack.observability.nightshift.flyout.investigationMissingWorkflowTitle',
+            {
+              defaultMessage: 'Investigation unavailable',
+            }
+          )}
+          data-test-subj="nightshiftInvestigationMissingWorkflowCallout"
+        >
+          <EuiText size="s">
+            {i18n.translate(
+              'xpack.observability.nightshift.flyout.investigationMissingWorkflowDescription',
+              {
+                defaultMessage:
+                  'This investigation is missing workflow details and cannot be loaded.',
+              }
+            )}
+          </EuiText>
+        </EuiCallOut>
       ) : (
         <InvestigationSummaryCard
           eventTitle={event.title}
@@ -99,7 +125,7 @@ export function EventInvestigation({ event }: EventInvestigationProps): React.Re
         />
       )}
 
-      {isFlyoutOpen && investigation && (
+      {isFlyoutOpen && investigation?.workflow_execution_id && (
         <InvestigationFlyout
           eventTitle={event.title}
           investigation={investigation}

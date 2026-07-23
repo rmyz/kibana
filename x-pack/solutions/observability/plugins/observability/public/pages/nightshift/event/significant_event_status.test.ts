@@ -10,7 +10,6 @@ import {
   NEEDS_ACTION_STATUSES,
   RESOLVED_STATUSES,
   byCriticalityAndUpdatedAtDesc,
-  filterEventsByStream,
   getNeedsActionEvents,
   getResolvedEvents,
   getStatusColor,
@@ -68,18 +67,6 @@ describe('significant_event_status', () => {
     expect(getResolvedEvents(events).map(({ event_id: id }) => id)).toEqual(['3', '4', '5']);
   });
 
-  it('filters events by stream, returning all when no stream is selected', () => {
-    const events = [
-      mockEvent({ event_id: '1', stream_names: ['service-a'] }),
-      mockEvent({ event_id: '2', stream_names: ['service-b'] }),
-      mockEvent({ event_id: '3', stream_names: undefined }),
-    ];
-
-    expect(filterEventsByStream(events, undefined)).toHaveLength(3);
-    expect(filterEventsByStream(events, 'service-a').map(({ event_id: id }) => id)).toEqual(['1']);
-    expect(filterEventsByStream(events, 'service-b').map(({ event_id: id }) => id)).toEqual(['2']);
-  });
-
   it('sorts by descending criticality, breaking ties on updated_at', () => {
     const events = [
       mockEvent({
@@ -105,6 +92,19 @@ describe('significant_event_status', () => {
       'high',
       'low',
     ]);
+  });
+
+  it('handles missing severity without throwing during sort', () => {
+    const events = [
+      mockEvent({
+        event_id: 'missing',
+        severity: undefined as unknown as SignificantEvent['severity'],
+      }),
+      mockEvent({ event_id: 'critical', severity: '80-critical' }),
+    ];
+
+    expect(() => [...events].sort(byCriticalityAndUpdatedAtDesc)).not.toThrow();
+    expect([...events].sort(byCriticalityAndUpdatedAtDesc)[0].event_id).toBe('critical');
   });
 
   it('maps status to color and label', () => {

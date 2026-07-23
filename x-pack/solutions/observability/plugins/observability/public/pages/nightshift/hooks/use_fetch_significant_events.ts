@@ -26,6 +26,7 @@ interface PaginatedResponse<T> {
 /** Server allows up to 1000 hits per page (`events` internal route). */
 export const NIGHTSHIFT_EVENTS_PAGE_SIZE = 1000;
 const NIGHTSHIFT_LOOKBACK_DAYS = 30;
+const MAX_FETCH_PAGES = 10;
 
 const fetchAllSignificantEvents = async ({
   http,
@@ -42,7 +43,7 @@ const fetchAllSignificantEvents = async ({
   let page = 1;
   let total = 0;
 
-  while (true) {
+  while (page <= MAX_FETCH_PAGES) {
     const response = await http.get<PaginatedResponse<SignificantEvent>>(
       '/internal/significant_events/events',
       {

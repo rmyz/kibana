@@ -11,7 +11,10 @@ import { I18nProvider } from '@kbn/i18n-react';
 import type { LifecycleDetection, SignificantEvent } from '@kbn/significant-events-schema';
 import { DetectionsList } from './detections_list';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
-import { useFetchStreamFeatures } from '../hooks/use_fetch_stream_features';
+import {
+  useFetchStreamFeatures,
+  useFetchStreamFeaturesByStream,
+} from '../hooks/use_fetch_stream_features';
 
 jest.mock('@kbn/kibana-react-plugin/public', () => ({
   useUiSetting: () => 'MMM D, YYYY @ HH:mm:ss.SSS',
@@ -36,6 +39,7 @@ jest.mock('../../../utils/kibana_react', () => ({
 
 const mockUseFetchEventLifecycle = useFetchEventLifecycle as jest.Mock;
 const mockUseFetchStreamFeatures = useFetchStreamFeatures as jest.Mock;
+const mockUseFetchStreamFeaturesByStream = useFetchStreamFeaturesByStream as jest.Mock;
 
 const mockEvent = (overrides: Partial<SignificantEvent> = {}): SignificantEvent => ({
   '@timestamp': '2026-07-10T12:00:00Z',
@@ -100,6 +104,25 @@ function setLifecycle({
     isError: false,
     refetch: jest.fn(),
   });
+  mockUseFetchStreamFeaturesByStream.mockReturnValue(
+    new Map([
+      [
+        'logs.web-frontend',
+        [
+          {
+            uuid: 'feat-web-frontend',
+            id: 'web-frontend',
+            stream_name: 'logs.web-frontend',
+            type: 'entity',
+            title: 'web-frontend',
+            description: '',
+            properties: { name: 'web-frontend' },
+            confidence: 90,
+          },
+        ],
+      ],
+    ])
+  );
   return { refetch };
 }
 

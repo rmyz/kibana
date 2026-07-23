@@ -9,6 +9,7 @@ import moment from 'moment';
 import { i18n } from '@kbn/i18n';
 import type { InvestigationHypothesis, InvestigationState } from '@kbn/significant-events-schema';
 import type { InvestigationStatus } from '@kbn/investigation-output';
+import { formatShortTime } from '../common/format_timestamp';
 
 export interface InvestigationRecommendation {
   title: string;
@@ -24,21 +25,37 @@ export interface BlindSpotItem {
 
 const NEXT_STEP_SECTION_TITLES = ['next steps', 'recommendations', 'try next'];
 
-export const formatInvestigationDuration = (startedAt: string, endedAt: number | string): string =>
-  moment.duration(Math.max(0, moment(endedAt).diff(moment(startedAt)))).humanize();
+export const formatInvestigationDuration = (
+  startedAt: string,
+  endedAt: number | string
+): string => {
+  const minutes = Math.max(
+    0,
+    Math.round(moment.duration(moment(endedAt).diff(moment(startedAt))).asMinutes())
+  );
+
+  if (minutes < 1) {
+    return i18n.translate('xpack.observability.nightshift.investigation.durationUnderOneMinute', {
+      defaultMessage: '< 1 min',
+    });
+  }
+
+  return i18n.translate('xpack.observability.nightshift.investigation.durationMinutes', {
+    defaultMessage: '{minutes} min',
+    values: { minutes },
+  });
+};
 
 export const getInvestigationTimeLabel = ({
   startedAt,
   endedAt,
   isRunning,
-  formatTimestamp,
 }: {
   startedAt: string;
   endedAt?: number | string;
   isRunning: boolean;
-  formatTimestamp: (timestamp: string) => string;
 }): string => {
-  const time = formatTimestamp(startedAt);
+  const time = formatShortTime(startedAt);
   const duration = formatInvestigationDuration(startedAt, endedAt ?? Date.now());
 
   if (isRunning) {
@@ -262,10 +279,7 @@ export const parseInvestigationRecommendations = (
   const bulletRecommendations = fromConclusion ? parseNextStepsRecommendations(fromConclusion) : [];
 
   if (bulletRecommendations.length > 0) {
-    return bulletRecommendations.map((recommendation, index) => ({
-      ...recommendation,
-      confidence: state?.hypotheses?.[index]?.confidence,
-    }));
+    return bulletRecommendations;
   }
 
   return [...(state?.hypotheses ?? [])]
@@ -282,8 +296,10 @@ export const getPrimaryRecommendation = (
   state?: InvestigationState
 ): InvestigationRecommendation | undefined => parseInvestigationRecommendations(state)[0];
 
+const escapeMarkdownInline = (text: string): string => text.replace(/([\\`*_[\]])/g, '\\$1');
+
 export const formatBlindSpotMarkdown = ({ title, description }: BlindSpotItem): string =>
-  `**${title}** · ${description}`;
+  `**${escapeMarkdownInline(title)}** · ${escapeMarkdownInline(description)}`;
 
 export const mapBlindSpots = (gaps: string[] | undefined): BlindSpotItem[] =>
   (gaps ?? []).map((gap) => {
@@ -331,6 +347,10 @@ export const getHypothesisStatusLabel = (status: InvestigationHypothesis['status
     case 'dismissed':
       return i18n.translate('xpack.observability.nightshift.investigation.hypothesisRejected', {
         defaultMessage: 'Rejected',
+      });
+    default:
+      return i18n.translate('xpack.observability.nightshift.investigation.hypothesisUnknown', {
+        defaultMessage: 'Unknown',
       });
   }
 };

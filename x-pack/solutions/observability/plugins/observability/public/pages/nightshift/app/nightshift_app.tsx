@@ -41,11 +41,11 @@ import { NightshiftHeader } from './nightshift_header';
 
 // Kept in the URL so a refresh or a shared link restores the open flyout.
 const SELECTED_EVENT_QUERY_PARAM = 'eventUuid';
+const BLAST_RADIUS_QUERY_PARAM = 'blastRadius';
 
 export function NightshiftApp(): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const { agentBuilder, application } = useKibana().services;
-  const [selectedStreamName, setSelectedStreamName] = useState<string>();
   const history = useHistory();
   const { search } = useLocation();
   const needsActionSectionRef = useRef<HTMLElement>(null);
@@ -66,6 +66,11 @@ export function NightshiftApp(): React.ReactElement {
     [events, selectedEventUuid]
   );
   const [eventNotFound, setEventNotFound] = useState(false);
+
+  const selectedBlastRadiusKey = useMemo(
+    () => new URLSearchParams(search).get(BLAST_RADIUS_QUERY_PARAM) ?? undefined,
+    [search]
+  );
 
   const showAllEventsHref = application.getUrlForApp('streams', {
     deepLinkId: 'significantEventsEvents',
@@ -113,9 +118,23 @@ export function NightshiftApp(): React.ReactElement {
   // Blast radius pills come from each event's `blast_radius[]` (stream_names only when absent).
   const blastRadius = useMemo(() => buildBlastRadiusChips(needsActionEvents), [needsActionEvents]);
 
-  const activeBlastRadiusChip = blastRadius.some(({ name }) => name === selectedStreamName)
-    ? selectedStreamName
+  const activeBlastRadiusChip = blastRadius.some(({ key }) => key === selectedBlastRadiusKey)
+    ? selectedBlastRadiusKey
     : undefined;
+
+  const handleBlastRadiusSelect = useCallback(
+    (chipKey: string) => {
+      const params = new URLSearchParams(history.location.search);
+      const nextKey = activeBlastRadiusChip === chipKey ? undefined : chipKey;
+      if (nextKey) {
+        params.set(BLAST_RADIUS_QUERY_PARAM, nextKey);
+      } else {
+        params.delete(BLAST_RADIUS_QUERY_PARAM);
+      }
+      history.replace({ search: params.toString() });
+    },
+    [activeBlastRadiusChip, history]
+  );
 
   const visibleNeedsActionEvents = useMemo(
     () => filterEventsByBlastRadiusChip(needsActionEvents, activeBlastRadiusChip),
@@ -141,11 +160,17 @@ export function NightshiftApp(): React.ReactElement {
   useEffect(() => {
     if (selectedEventUuid && !selectedEvent && !isLoading) {
       setEventNotFound(true);
-      handleFlyoutClose();
+      const params = new URLSearchParams(history.location.search);
+      if (params.has(SELECTED_EVENT_QUERY_PARAM)) {
+        params.delete(SELECTED_EVENT_QUERY_PARAM);
+        history.replace({ search: params.toString() });
+      }
       return;
     }
-    setEventNotFound(false);
-  }, [handleFlyoutClose, isLoading, selectedEvent, selectedEventUuid]);
+    if (selectedEvent || !selectedEventUuid) {
+      setEventNotFound(false);
+    }
+  }, [history, isLoading, selectedEvent, selectedEventUuid]);
 
   const scrollToSection = (sectionRef: React.RefObject<HTMLElement>) => {
     sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -295,10 +320,8 @@ export function NightshiftApp(): React.ReactElement {
 
           <BlastRadiusEntities
             entities={blastRadius}
-            onSelect={(name) => {
-              setSelectedStreamName((current) => (current === name ? undefined : name));
-            }}
-            selectedEntity={activeBlastRadiusChip}
+            onSelect={handleBlastRadiusSelect}
+            selectedEntityKey={activeBlastRadiusChip}
           />
 
           <EuiFlexItem
@@ -311,6 +334,12 @@ export function NightshiftApp(): React.ReactElement {
                 <EuiFlexItem>
                   <SignificantEventList
                     events={visibleNeedsActionEvents}
+                    filterActive={Boolean(activeBlastRadiusChip)}
+                    onClearFilter={
+                      activeBlastRadiusChip
+                        ? () => handleBlastRadiusSelect(activeBlastRadiusChip)
+                        : undefined
+                    }
                     onChatClick={onChatClick}
                     onEventClick={handleEventClick}
                     sectionRef={needsActionSectionRef}
@@ -326,6 +355,12 @@ export function NightshiftApp(): React.ReactElement {
                 <EuiFlexItem>
                   <SignificantEventList
                     events={visibleResolvedEvents}
+                    filterActive={Boolean(activeBlastRadiusChip)}
+                    onClearFilter={
+                      activeBlastRadiusChip
+                        ? () => handleBlastRadiusSelect(activeBlastRadiusChip)
+                        : undefined
+                    }
                     onChatClick={onChatClick}
                     onEventClick={handleEventClick}
                     sectionRef={resolvedSectionRef}

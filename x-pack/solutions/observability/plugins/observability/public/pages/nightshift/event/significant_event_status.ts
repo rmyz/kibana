@@ -41,25 +41,20 @@ export const RESOLVED_STATUSES: SignificantEventStatus[] = SIGNIFICANT_EVENT_STA
 
 export type StatusColor = 'danger' | 'success';
 
+const getStatusGroup = (status: SignificantEventStatus): StatusGroup =>
+  STATUS_GROUP[status] ?? 'needsAction';
+
 export const isNeedsActionStatus = (status: SignificantEventStatus): boolean =>
-  STATUS_GROUP[status] === 'needsAction';
+  getStatusGroup(status) === 'needsAction';
 
 export const isResolvedStatus = (status: SignificantEventStatus): boolean =>
-  STATUS_GROUP[status] === 'resolved';
+  getStatusGroup(status) === 'resolved';
 
 export const getNeedsActionEvents = (events: SignificantEvent[]): SignificantEvent[] =>
   events.filter(({ status }) => isNeedsActionStatus(status));
 
 export const getResolvedEvents = (events: SignificantEvent[]): SignificantEvent[] =>
   events.filter(({ status }) => isResolvedStatus(status));
-
-export const filterEventsByStream = (
-  events: SignificantEvent[],
-  streamName: string | undefined
-): SignificantEvent[] =>
-  streamName
-    ? events.filter(({ stream_names: streamNames }) => (streamNames ?? []).includes(streamName))
-    : events;
 
 /**
  * Recency for list ordering. Prefer `updated_at` when the API provides it on the event doc.
@@ -69,6 +64,14 @@ export const getEventUpdatedAt = (event: SignificantEvent): string => {
   return updatedAt ?? event['@timestamp'];
 };
 
+const parseSeverityRank = (severity: string | undefined): number => {
+  if (!severity) {
+    return -1;
+  }
+  const match = /^(\d+)/.exec(severity);
+  return match ? Number.parseInt(match[1], 10) : 0;
+};
+
 /**
  * Landing lists sort by criticality (`severity`) then recency (`updated_at`, falling back to `@timestamp`).
  */
@@ -76,7 +79,7 @@ export const byCriticalityAndUpdatedAtDesc = (
   first: SignificantEvent,
   second: SignificantEvent
 ): number =>
-  second.severity.localeCompare(first.severity) ||
+  parseSeverityRank(second.severity) - parseSeverityRank(first.severity) ||
   new Date(getEventUpdatedAt(second)).getTime() - new Date(getEventUpdatedAt(first)).getTime();
 
 export const getStatusColor = (status: SignificantEventStatus): StatusColor =>

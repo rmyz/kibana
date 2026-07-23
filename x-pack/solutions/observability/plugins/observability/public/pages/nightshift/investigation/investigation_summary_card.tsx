@@ -24,7 +24,6 @@ import {
 import type { InvestigationStatus } from '@kbn/investigation-output';
 import type { InvestigationState } from '@kbn/significant-events-schema';
 import { i18n } from '@kbn/i18n';
-import { useFormatTimestamp } from '../common/format_timestamp';
 import {
   buildBlindSpotChatOptions,
   buildRecommendationChatOptions,
@@ -74,21 +73,18 @@ function InvestigationStatusRow({
   startedAt,
   endedAt,
   isRunning,
-  formatTimestamp,
 }: {
   status: InvestigationStatus;
   state?: InvestigationState;
   startedAt: string;
   endedAt?: number | string;
   isRunning: boolean;
-  formatTimestamp: (timestamp: string) => string;
 }): React.ReactElement {
   const statusLabel = getInvestigationStatusLabel(status, state);
   const timeLabel = getInvestigationTimeLabel({
     startedAt,
     endedAt,
     isRunning,
-    formatTimestamp,
   });
 
   return (
@@ -332,7 +328,6 @@ export function InvestigationSummaryCard({
   onShowMoreRecommendations,
 }: InvestigationSummaryCardProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
-  const formatTimestamp = useFormatTimestamp();
   const isRunning = status === 'running' || status === 'loading';
   const headline = getInvestigationHeadline({ eventTitle, state, status });
   const goalText = getInvestigationGoalText(state);
@@ -357,7 +352,6 @@ export function InvestigationSummaryCard({
           startedAt={startedAt}
           endedAt={completedAt}
           isRunning={isRunning}
-          formatTimestamp={formatTimestamp}
         />
 
         {(status === 'complete' || isRunning || error) && (

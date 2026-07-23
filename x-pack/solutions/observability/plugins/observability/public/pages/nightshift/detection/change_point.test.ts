@@ -39,7 +39,7 @@ describe('getChangePointTimestamp', () => {
   it('frames the change knee relative to the detection timestamp', () => {
     const end = new Date('2026-07-10T12:00:00Z').getTime();
     const changeIndex = getChangePointIndex('spike', 28);
-    const expected = end - (28 - 1 - changeIndex) * 60_000;
+    const expected = end - (28 - 1 - changeIndex) * 300_000;
 
     expect(getChangePointTimestamp('2026-07-10T12:00:00Z', 'spike')).toBe(expected);
   });

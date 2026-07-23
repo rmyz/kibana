@@ -105,14 +105,10 @@ describe('investigation_presentation', () => {
         {
           title: 'Roll back checkout deployment',
           description: 'Revert commit abc123 and monitor error rate.',
-          code: undefined,
-          confidence: 0.92,
         },
         {
           title: 'Add canary deploy guardrail',
           description: 'Block deploys when error rate exceeds baseline.',
-          code: undefined,
-          confidence: 0.41,
         },
       ]);
     });
@@ -149,19 +145,16 @@ kubectl rollout status deployment/api-gateway
         {
           title: '**Immediate mitigation** — roll back api-gateway to v2.8.0',
           code: 'kubectl rollout undo deployment/api-gateway\nkubectl rollout status deployment/api-gateway',
-          confidence: 0.92,
         },
         {
           title:
             'Verify auth middleware recovery — confirm 200 responses resume and 5xx rate drops to zero',
           code: undefined,
-          confidence: 0.5,
         },
         {
           title:
             'Monitor web-frontend latency recovery — P95 should return to ~480ms within 5–10 minutes of gateway recovery',
           code: undefined,
-          confidence: undefined,
         },
       ]);
     });

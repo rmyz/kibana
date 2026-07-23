@@ -67,6 +67,13 @@ const buildTimeSeries = (
   changePointMarker: Array<{ x: number; y: number }>;
 } => {
   const end = new Date(endTime).getTime();
+  if (!Number.isFinite(end)) {
+    return {
+      data: [],
+      changePointAt: end,
+      changePointMarker: [],
+    };
+  }
   const changeIndex = getChangePointIndex(changePointType, points);
   const series = generateChangePointSeries(changePointType, points).map(({ x, y }) => ({
     x: end - (points - 1 - x) * ILLUSTRATIVE_POINT_INTERVAL_MS,

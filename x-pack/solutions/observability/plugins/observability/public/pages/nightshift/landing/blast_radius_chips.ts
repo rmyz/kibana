@@ -5,46 +5,36 @@
  * 2.0.
  */
 
-import type { BlastRadiusEntry, Feature, SignificantEvent } from '@kbn/significant-events-schema';
+import type { SignificantEvent } from '@kbn/significant-events-schema';
+import {
+  getBlastRadiusEntryChipKey,
+  getBlastRadiusEntryChipName,
+} from '../common/blast_radius_display';
+
+export type { BlastRadiusEntry } from '@kbn/significant-events-schema';
+export {
+  getBlastRadiusEntryChipKey,
+  getBlastRadiusEntryChipName,
+  getFeatureDisplayName,
+} from '../common/blast_radius_display';
 
 export interface BlastRadiusChip {
   count: number;
+  key: string;
   name: string;
 }
 
-export const getFeatureDisplayName = (feature: Feature): string => {
-  const propertyName = feature.properties?.name;
-  if (typeof propertyName === 'string' && propertyName.length > 0) {
-    return propertyName;
-  }
-  return feature.title ?? feature.id;
-};
-
-export const getBlastRadiusEntryChipName = (entry: BlastRadiusEntry): string => {
-  switch (entry.type) {
-    case 'dependency':
-      return entry.target;
-    case 'infrastructure':
-      return entry.workloads?.[0] ?? entry.title ?? entry.stream_name;
-    case 'entity':
-      return entry.name;
-  }
-};
-
-const getBlastRadiusEntryChipKey = (entry: BlastRadiusEntry): string =>
-  `${entry.type}:${entry.feature_id}:${getBlastRadiusEntryChipName(entry)}`;
-
-export const eventHasBlastRadiusChip = (event: SignificantEvent, chipName: string): boolean => {
+export const eventHasBlastRadiusChip = (event: SignificantEvent, chipKey: string): boolean => {
   const blastRadius = event.blast_radius ?? [];
   if (blastRadius.length > 0) {
-    return blastRadius.some((entry) => getBlastRadiusEntryChipName(entry) === chipName);
+    return blastRadius.some((entry) => getBlastRadiusEntryChipKey(entry) === chipKey);
   }
-  return (event.stream_names ?? []).includes(chipName);
+  return (event.stream_names ?? []).includes(chipKey);
 };
 
 /** Landing blast-radius pills from `blast_radius[]` on need-action events (falls back to `stream_names`). */
 export const buildBlastRadiusChips = (events: SignificantEvent[]): BlastRadiusChip[] => {
-  const byChip = new Map<string, number>();
+  const byChip = new Map<string, { count: number; name: string }>();
 
   events.forEach((event) => {
     const blastRadius = event.blast_radius ?? [];
@@ -62,17 +52,18 @@ export const buildBlastRadiusChips = (events: SignificantEvent[]): BlastRadiusCh
         return;
       }
       seenOnEvent.add(key);
-      byChip.set(name, (byChip.get(name) ?? 0) + 1);
+      const current = byChip.get(key);
+      byChip.set(key, { name, count: (current?.count ?? 0) + 1 });
     });
   });
 
-  return Array.from(byChip, ([name, count]) => ({ count, name })).sort(
+  return Array.from(byChip, ([key, { count, name }]) => ({ count, key, name })).sort(
     (first, second) => second.count - first.count || first.name.localeCompare(second.name)
   );
 };
 
 export const filterEventsByBlastRadiusChip = (
   events: SignificantEvent[],
-  chipName: string | undefined
+  chipKey: string | undefined
 ): SignificantEvent[] =>
-  chipName ? events.filter((event) => eventHasBlastRadiusChip(event, chipName)) : events;
+  chipKey ? events.filter((event) => eventHasBlastRadiusChip(event, chipKey)) : events;

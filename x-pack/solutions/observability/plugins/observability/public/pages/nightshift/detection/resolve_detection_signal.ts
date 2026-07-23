@@ -10,7 +10,15 @@ import type { Discovery, LifecycleDetection, SignalEntry } from '@kbn/significan
 const streamsAlign = (
   detectionStream: string | undefined,
   signalStream: string | undefined
-): boolean => detectionStream == null || signalStream == null || detectionStream === signalStream;
+): boolean => {
+  if (detectionStream == null && signalStream == null) {
+    return true;
+  }
+  if (detectionStream == null || signalStream == null) {
+    return false;
+  }
+  return detectionStream === signalStream;
+};
 
 const signalMatchesDetection = (signal: SignalEntry, detection: LifecycleDetection): boolean => {
   if (signal.type !== 'detection') {
@@ -18,20 +26,16 @@ const signalMatchesDetection = (signal: SignalEntry, detection: LifecycleDetecti
   }
 
   const { metadata } = signal;
-  if (
-    metadata.detection_id != null &&
-    detection.detection_id != null &&
-    metadata.detection_id !== detection.detection_id
-  ) {
-    return false;
+
+  if (metadata.detection_id != null && detection.detection_id != null) {
+    return (
+      metadata.detection_id === detection.detection_id &&
+      streamsAlign(detection.stream_name, signal.stream_name)
+    );
   }
 
-  if (
-    metadata.detection_id != null &&
-    metadata.detection_id === detection.detection_id &&
-    streamsAlign(detection.stream_name, signal.stream_name)
-  ) {
-    return true;
+  if (metadata.detection_id != null || detection.detection_id != null) {
+    return false;
   }
 
   if (
@@ -62,29 +66,14 @@ export const findDetectionSignal = (
 ): SignalEntry | undefined => {
   const discoverySignals =
     sources.discoveries?.flatMap((discovery) => discovery.signals ?? []) ?? [];
-  const seenDetectionIds = new Set<string>();
 
   for (const signal of discoverySignals) {
-    if (signal.type !== 'detection') {
-      continue;
-    }
-    const detectionId = signal.metadata.detection_id;
-    if (detectionId) {
-      seenDetectionIds.add(detectionId);
-    }
     if (signalMatchesDetection(signal, detection)) {
       return signal;
     }
   }
 
   for (const signal of sources.eventSignals ?? []) {
-    if (signal.type !== 'detection') {
-      continue;
-    }
-    const detectionId = signal.metadata.detection_id;
-    if (detectionId && seenDetectionIds.has(detectionId)) {
-      continue;
-    }
     if (signalMatchesDetection(signal, detection)) {
       return signal;
     }

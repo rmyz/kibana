@@ -6,7 +6,7 @@
  */
 
 import { css } from '@emotion/react';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   EuiBadge,
   EuiFlyout,
@@ -21,6 +21,7 @@ import {
   useEuiTheme,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+import { useInvestigationState } from '@kbn/investigation-output';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
 import { DetectionFlyout } from '../detection/detection_flyout';
 import { DetectionsList } from './detections_list';
@@ -28,6 +29,7 @@ import { EventInvestigation } from './event_investigation';
 import { EventFlyoutChatFooter } from './event_flyout_chat_footer';
 import { InvestigationStatusBadge } from '../investigation/investigation_status_badge';
 import { TruncatableSummary } from '../common/truncatable_summary';
+import { FlyoutSectionTitle } from '../common/flyout_section_title';
 import { NightshiftMarkIcon } from '../app/nightshift_mark_icon';
 import { useFormatTimestamp } from '../common/format_timestamp';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
@@ -43,9 +45,32 @@ export interface EventFlyoutProps {
 export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const formatTimestamp = useFormatTimestamp();
-  const { agentBuilder } = useKibana().services;
+  const { agentBuilder, http } = useKibana().services;
   const [selectedDetectionId, setSelectedDetectionId] = useState<string>();
   const lifecycleQuery = useFetchEventLifecycle(event.event_uuid);
+  const latestInvestigation = useMemo(() => event.investigations?.at(-1), [event.investigations]);
+
+  const {
+    conversationId,
+    error: investigationError,
+    state: investigationState,
+    status: investigationStatus,
+  } = useInvestigationState({
+    http,
+    workflowExecutionId: latestInvestigation?.workflow_execution_id,
+    isRunning: latestInvestigation != null && latestInvestigation.completed_at == null,
+  });
+
+  useEffect(() => {
+    if (
+      selectedDetectionId &&
+      lifecycleQuery.data?.detections.every(
+        (detection) => detection.detection_id !== selectedDetectionId
+      )
+    ) {
+      setSelectedDetectionId(undefined);
+    }
+  }, [lifecycleQuery.data?.detections, selectedDetectionId]);
 
   const selectedDetection = useMemo(
     () =>
@@ -140,13 +165,11 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
       </EuiFlyoutHeader>
 
       <EuiFlyoutBody>
-        <EuiTitle size="xs">
-          <h3>
-            {i18n.translate('xpack.observability.nightshift.flyout.summaryTitle', {
-              defaultMessage: 'Summary',
-            })}
-          </h3>
-        </EuiTitle>
+        <FlyoutSectionTitle>
+          {i18n.translate('xpack.observability.nightshift.flyout.summaryTitle', {
+            defaultMessage: 'Summary',
+          })}
+        </FlyoutSectionTitle>
         <EuiSpacer size="s" />
         <TruncatableSummary summary={event.summary} />
 
@@ -162,7 +185,14 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
 
         <EuiSpacer size="l" />
 
-        <EventInvestigation event={event} />
+        <EventInvestigation
+          event={event}
+          investigation={latestInvestigation}
+          status={investigationStatus}
+          state={investigationState}
+          error={investigationError}
+          conversationId={conversationId}
+        />
       </EuiFlyoutBody>
 
       {selectedDetection && (
@@ -175,7 +205,7 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
         />
       )}
 
-      {agentBuilder && (
+      {agentBuilder && latestInvestigation && (
         <EuiFlyoutFooter
           css={css`
             /* The design uses a plain footer instead of EUI's shaded one. */
@@ -183,7 +213,12 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
             border-top: ${euiTheme.border.thin};
           `}
         >
-          <EventFlyoutChatFooter event={event} />
+          <EventFlyoutChatFooter
+            event={event}
+            investigation={latestInvestigation}
+            conversationId={conversationId}
+            status={investigationStatus}
+          />
         </EuiFlyoutFooter>
       )}
     </EuiFlyout>

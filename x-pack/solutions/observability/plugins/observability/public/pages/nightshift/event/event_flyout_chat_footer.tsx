@@ -20,9 +20,11 @@ import {
 } from '@elastic/eui';
 import { css } from '@emotion/react';
 import { i18n } from '@kbn/i18n';
-import { useInvestigationState } from '@kbn/investigation-output';
-import type { SignificantEvent } from '@kbn/significant-events-schema';
-import type { AgentBuilderPluginStart } from '@kbn/agent-builder-browser';
+import type { InvestigationStatus } from '@kbn/investigation-output';
+import type {
+  SignificantEvent,
+  SignificantEventInvestigation,
+} from '@kbn/significant-events-schema';
 import { AiButton } from '@kbn/shared-ux-ai-components';
 import { useKibana } from '../../../utils/kibana_react';
 import {
@@ -37,42 +39,33 @@ const truncateForMenu = (text: string): string =>
     ? text
     : `${text.slice(0, INVESTIGATION_MENU_TITLE_MAX_LENGTH - 1)}…`;
 
-const openChat = (
-  agentBuilder: AgentBuilderPluginStart | undefined,
-  options: Parameters<AgentBuilderPluginStart['openChat']>[0]
-) => {
-  agentBuilder?.openChat(options);
-};
-
 export interface EventFlyoutChatFooterProps {
   event: SignificantEvent;
+  investigation: SignificantEventInvestigation;
+  conversationId?: string;
+  status: InvestigationStatus;
 }
 
-export function EventFlyoutChatFooter({ event }: EventFlyoutChatFooterProps): React.ReactElement {
+export function EventFlyoutChatFooter({
+  event,
+  investigation,
+  conversationId,
+  status,
+}: EventFlyoutChatFooterProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const investigationsMenuTitleFont = useEuiFontSize('xs');
-  const { agentBuilder, http } = useKibana().services;
+  const { agentBuilder } = useKibana().services;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const latestInvestigation = event.investigations?.at(-1);
 
-  const { conversationId, status } = useInvestigationState({
-    http,
-    workflowExecutionId: latestInvestigation?.workflow_execution_id,
-    isRunning: latestInvestigation != null && latestInvestigation.completed_at == null,
-  });
+  const latestInvestigationInProgress = investigation.completed_at == null && status !== 'complete';
 
-  const latestInvestigationInProgress =
-    latestInvestigation != null &&
-    latestInvestigation.completed_at == null &&
-    status !== 'complete';
-
-  const showChatMenu = latestInvestigation != null && !latestInvestigationInProgress;
+  const showChatMenu = !latestInvestigationInProgress;
 
   const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
   const openNewChat = useCallback(() => {
     closeMenu();
-    openChat(agentBuilder, buildNewSignificantEventChatOptions(event));
+    agentBuilder?.openChat(buildNewSignificantEventChatOptions(event));
   }, [agentBuilder, closeMenu, event]);
 
   const openInvestigationChat = useCallback(() => {
@@ -80,7 +73,7 @@ export function EventFlyoutChatFooter({ event }: EventFlyoutChatFooterProps): Re
       return;
     }
     closeMenu();
-    openChat(agentBuilder, buildInvestigationConversationChatOptions(conversationId));
+    agentBuilder?.openChat(buildInvestigationConversationChatOptions(conversationId));
   }, [agentBuilder, closeMenu, conversationId]);
 
   const inProgressTooltip = latestInvestigationInProgress

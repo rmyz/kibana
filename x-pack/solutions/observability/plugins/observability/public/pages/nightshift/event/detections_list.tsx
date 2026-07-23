@@ -24,12 +24,13 @@ import {
 import { i18n } from '@kbn/i18n';
 import type { UseQueryResult } from '@kbn/react-query';
 import type {
+  Feature,
   LifecycleDetection,
   EventLifecycleResponse,
   SignificantEvent,
 } from '@kbn/significant-events-schema';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
-import { useFetchStreamFeatures } from '../hooks/use_fetch_stream_features';
+import { useFetchStreamFeaturesByStream } from '../hooks/use_fetch_stream_features';
 import { useFormatTimestamp } from '../common/format_timestamp';
 import { getChangePointLabel } from '../detection/change_point';
 import { ChangePointSparkline } from '../detection/change_point_visualization';
@@ -64,18 +65,19 @@ const parseTimestamp = (timestamp: string): number => {
 function DetectionCard({
   detection,
   event,
+  streamFeatures,
   isSelected = false,
   onClick,
 }: {
   detection: LifecycleDetection;
   event: SignificantEvent;
+  streamFeatures: Feature[];
   isSelected?: boolean;
   onClick?: (detection: LifecycleDetection) => void;
 }) {
   const { euiTheme } = useEuiTheme();
   const formatTimestamp = useFormatTimestamp();
   const changePointLabel = getChangePointLabel(detection.change_point_type);
-  const { data: streamFeatures = [] } = useFetchStreamFeatures(detection.stream_name);
   const entityLabels = useMemo(() => {
     const entities = getDetectionEntities(event, detection, streamFeatures);
     if (entities.length > 0) {
@@ -308,6 +310,18 @@ export function DetectionsList({
     [data]
   );
 
+  const streamNames = useMemo(
+    () => [
+      ...new Set(
+        detections
+          .map((detection) => detection.stream_name)
+          .filter((streamName): streamName is string => Boolean(streamName))
+      ),
+    ],
+    [detections]
+  );
+  const streamFeaturesByStream = useFetchStreamFeaturesByStream(streamNames);
+
   const cachedDetectionCount = data?.detections?.length ?? 0;
   const isInitialLoading = isLoading && cachedDetectionCount === 0;
   const isRefetching = isFetching && !isInitialLoading;
@@ -374,6 +388,7 @@ export function DetectionsList({
               key={detection.detection_id}
               detection={detection}
               event={event}
+              streamFeatures={streamFeaturesByStream.get(detection.stream_name ?? '') ?? []}
               isSelected={detection.detection_id === selectedDetectionId}
               onClick={onDetectionClick}
             />

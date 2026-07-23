@@ -42,7 +42,7 @@ describe('blast_radius_chips', () => {
       }),
     ]);
 
-    expect(chips).toEqual([{ count: 1, name: 'checkout-api' }]);
+    expect(chips).toEqual([{ count: 1, key: 'entity:feat-1:checkout-api', name: 'checkout-api' }]);
   });
 
   it('falls back to stream_names when blast_radius is empty', () => {
@@ -52,8 +52,8 @@ describe('blast_radius_chips', () => {
     ]);
 
     expect(chips).toEqual([
-      { count: 2, name: 'service-a' },
-      { count: 1, name: 'service-b' },
+      { count: 2, key: 'service-a', name: 'service-a' },
+      { count: 1, key: 'service-b', name: 'service-b' },
     ]);
   });
 
@@ -78,7 +78,7 @@ describe('blast_radius_chips', () => {
     expect(chips[0].count).toBe(2);
   });
 
-  it('filters events by blast radius chip name', () => {
+  it('filters events by blast radius chip key', () => {
     const events = [
       mockEvent({
         event_id: '1',
@@ -98,7 +98,7 @@ describe('blast_radius_chips', () => {
       }),
     ];
 
-    expect(filterEventsByBlastRadiusChip(events, 'checkout-api')).toHaveLength(1);
+    expect(filterEventsByBlastRadiusChip(events, 'entity:f1:checkout-api')).toHaveLength(1);
     expect(eventHasBlastRadiusChip(events[1], 'other-service')).toBe(true);
   });
 

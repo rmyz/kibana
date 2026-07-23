@@ -27,6 +27,7 @@ import {
 import { DISCOVER_APP_LOCATOR } from '@kbn/deeplinks-analytics';
 import type { DiscoverAppLocatorParams } from '@kbn/discover-plugin/common';
 import { i18n } from '@kbn/i18n';
+import moment from 'moment';
 import { AiButton } from '@kbn/shared-ux-ai-components';
 import { SIGNIFICANT_EVENT_DETECTION_ATTACHMENT_TYPE } from '@kbn/significant-events-plugin/common';
 import type {
@@ -105,10 +106,18 @@ export function DetectionFlyout({
     if (!esqlQuery) {
       return undefined;
     }
-    return share.url.locators
-      .get<DiscoverAppLocatorParams>(DISCOVER_APP_LOCATOR)
-      ?.getRedirectUrl({ query: { esql: esqlQuery } });
-  }, [share, esqlQuery]);
+    const detectionTime = moment(detection['@timestamp']);
+    if (!detectionTime.isValid()) {
+      return undefined;
+    }
+    return share.url.locators.get<DiscoverAppLocatorParams>(DISCOVER_APP_LOCATOR)?.getRedirectUrl({
+      query: { esql: esqlQuery },
+      timeRange: {
+        from: detectionTime.clone().subtract(1, 'hour').toISOString(),
+        to: detectionTime.clone().add(15, 'minutes').toISOString(),
+      },
+    });
+  }, [detection, esqlQuery, share]);
 
   const handleOpenInChat = useCallback(() => {
     agentBuilder?.openChat({
@@ -158,6 +167,18 @@ export function DetectionFlyout({
             {detection.change_point_type && (
               <EuiFlexItem grow={false}>
                 <EuiBadge color="default">{changePointLabel}</EuiBadge>
+              </EuiFlexItem>
+            )}
+            {signal?.confirmed === false && (
+              <EuiFlexItem grow={false}>
+                <EuiBadge color="warning">
+                  {i18n.translate(
+                    'xpack.observability.nightshift.detectionFlyout.unconfirmedBadge',
+                    {
+                      defaultMessage: 'Unconfirmed',
+                    }
+                  )}
+                </EuiBadge>
               </EuiFlexItem>
             )}
           </EuiFlexGroup>

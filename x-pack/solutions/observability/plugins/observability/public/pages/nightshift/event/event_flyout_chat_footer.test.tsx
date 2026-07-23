@@ -10,21 +10,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { EuiProvider } from '@elastic/eui';
 import { I18nProvider } from '@kbn/i18n-react';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
+import type { InvestigationStatus } from '@kbn/investigation-output';
 import { EventFlyoutChatFooter } from './event_flyout_chat_footer';
 
 const mockOpenChat = jest.fn();
-
-let mockConversationId: string | undefined;
-let mockInvestigationStatus: 'complete' | 'running' | 'loading' = 'loading';
-
-jest.mock('@kbn/investigation-output', () => ({
-  useInvestigationState: () => ({
-    status: mockInvestigationStatus,
-    state: undefined,
-    error: undefined,
-    conversationId: mockConversationId,
-  }),
-}));
 
 jest.mock('../../../utils/kibana_react', () => ({
   useKibana: () => ({
@@ -48,11 +37,29 @@ const mockEvent = (overrides: Partial<SignificantEvent> = {}): SignificantEvent 
   ...overrides,
 });
 
-const renderFooter = (event: SignificantEvent) =>
+const renderFooter = ({
+  event,
+  investigation = {
+    workflow_execution_id: 'exec-1',
+    started_at: '2026-07-10T12:00:00Z',
+  },
+  conversationId,
+  status = 'loading',
+}: {
+  event: SignificantEvent;
+  investigation?: NonNullable<SignificantEvent['investigations']>[number];
+  conversationId?: string;
+  status?: InvestigationStatus;
+}) =>
   render(
     <I18nProvider>
       <EuiProvider>
-        <EventFlyoutChatFooter event={event} />
+        <EventFlyoutChatFooter
+          event={event}
+          investigation={investigation}
+          conversationId={conversationId}
+          status={status}
+        />
       </EuiProvider>
     </I18nProvider>
   );
@@ -60,39 +67,19 @@ const renderFooter = (event: SignificantEvent) =>
 describe('EventFlyoutChatFooter', () => {
   beforeEach(() => {
     mockOpenChat.mockClear();
-    mockConversationId = undefined;
-    mockInvestigationStatus = 'loading';
   });
 
-  it('opens a new chat with attachment when no investigation exists', () => {
-    renderFooter(mockEvent());
-
-    fireEvent.click(screen.getByTestId('nightshiftEventFlyoutChatButton'));
-
-    expect(mockOpenChat).toHaveBeenCalledWith(
-      expect.objectContaining({
-        newConversation: true,
-        autoSendInitialMessage: true,
-        initialMessage: 'Explain this significant event: Web latency spike',
-        attachments: [expect.objectContaining({ id: 'evt-uuid-001' })],
-      })
-    );
-  });
-
-  it('shows a chat menu when the latest investigation has completed on the event doc', () => {
-    mockConversationId = 'conv-123';
-    mockInvestigationStatus = 'complete';
-    renderFooter(
-      mockEvent({
-        investigations: [
-          {
-            workflow_execution_id: 'exec-1',
-            started_at: '2026-07-10T12:00:00Z',
-            completed_at: '2026-07-10T12:05:00Z',
-          },
-        ],
-      })
-    );
+  it('opens a new chat with attachment when the latest investigation has completed', () => {
+    renderFooter({
+      event: mockEvent(),
+      investigation: {
+        workflow_execution_id: 'exec-1',
+        started_at: '2026-07-10T12:00:00Z',
+        completed_at: '2026-07-10T12:05:00Z',
+      },
+      conversationId: 'conv-123',
+      status: 'complete',
+    });
 
     fireEvent.click(screen.getByTestId('nightshiftEventFlyoutChatButton'));
     expect(screen.getByTestId('nightshiftEventFlyoutChatMenuPanel')).toBeInTheDocument();
@@ -103,31 +90,20 @@ describe('EventFlyoutChatFooter', () => {
   });
 
   it('shows the chat menu when the hook reports complete before completed_at is on the doc', () => {
-    mockInvestigationStatus = 'complete';
-    renderFooter(
-      mockEvent({
-        investigations: [
-          {
-            workflow_execution_id: 'exec-1',
-            started_at: '2026-07-10T12:00:00Z',
-          },
-        ],
-      })
-    );
+    renderFooter({
+      event: mockEvent(),
+      status: 'complete',
+    });
 
     fireEvent.click(screen.getByTestId('nightshiftEventFlyoutChatButton'));
     expect(screen.getByTestId('nightshiftEventFlyoutChatMenuPanel')).toBeInTheDocument();
   });
 
   it('uses a plain button while the latest investigation is still running', () => {
-    mockInvestigationStatus = 'running';
-    renderFooter(
-      mockEvent({
-        investigations: [
-          { workflow_execution_id: 'exec-running', started_at: '2026-07-10T12:00:00Z' },
-        ],
-      })
-    );
+    renderFooter({
+      event: mockEvent(),
+      status: 'running',
+    });
 
     fireEvent.click(screen.getByTestId('nightshiftEventFlyoutChatButton'));
     expect(screen.queryByTestId('nightshiftEventFlyoutChatMenuPanel')).not.toBeInTheDocument();
@@ -135,10 +111,8 @@ describe('EventFlyoutChatFooter', () => {
   });
 
   it('uses a plain button while a newer investigation is still running on the doc', () => {
-    mockInvestigationStatus = 'running';
-    mockConversationId = 'conv-123';
-    renderFooter(
-      mockEvent({
+    renderFooter({
+      event: mockEvent({
         investigations: [
           {
             workflow_execution_id: 'exec-done',
@@ -147,8 +121,14 @@ describe('EventFlyoutChatFooter', () => {
           },
           { workflow_execution_id: 'exec-running', started_at: '2026-07-10T12:00:00Z' },
         ],
-      })
-    );
+      }),
+      investigation: {
+        workflow_execution_id: 'exec-running',
+        started_at: '2026-07-10T12:00:00Z',
+      },
+      conversationId: 'conv-123',
+      status: 'running',
+    });
 
     fireEvent.click(screen.getByTestId('nightshiftEventFlyoutChatButton'));
     expect(screen.queryByTestId('nightshiftEventFlyoutChatMenuPanel')).not.toBeInTheDocument();

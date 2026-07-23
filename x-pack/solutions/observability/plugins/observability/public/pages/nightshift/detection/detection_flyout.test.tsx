@@ -223,6 +223,10 @@ describe('DetectionFlyout', () => {
     );
     expect(mockGetRedirectUrl).toHaveBeenCalledWith({
       query: { esql: mockSignal.evidence?.esql_query },
+      timeRange: {
+        from: '2026-07-10T11:00:00.000Z',
+        to: '2026-07-10T12:15:00.000Z',
+      },
     });
   });
 

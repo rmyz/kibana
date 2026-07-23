@@ -47,7 +47,6 @@ import {
   buildHypothesisChatOptions,
   buildRecommendationChatOptions,
 } from './open_investigation_item_in_chat';
-import { useFormatTimestamp } from '../common/format_timestamp';
 import { InvestigationFormattedText } from './investigation_formatted_text';
 import { TruncatableSummary } from '../common/truncatable_summary';
 import {
@@ -469,7 +468,6 @@ export function InvestigationFlyout({
 }: InvestigationFlyoutProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const { agentBuilder } = useKibana().services;
-  const formatTimestamp = useFormatTimestamp();
   const [selectedTab, setSelectedTab] = useState<CompletedTabId>('recommendations');
   const isRunning = status === 'running' || status === 'loading';
   const headline = getInvestigationHeadline({ eventTitle, state, status });
@@ -486,7 +484,6 @@ export function InvestigationFlyout({
     startedAt: investigation.started_at,
     endedAt: investigation.completed_at,
     isRunning,
-    formatTimestamp,
   });
 
   const handleOpenInChat = useCallback(() => {
@@ -690,6 +687,19 @@ export function InvestigationFlyout({
                     </InvestigationFlyoutListPanel>
                   </EuiFlexItem>
                 ))}
+                {recommendations.length === 0 && (
+                  <EuiFlexItem grow={false}>
+                    <EuiText size="s" color="subdued">
+                      {i18n.translate(
+                        'xpack.observability.nightshift.investigation.flyout.emptyRecommendations',
+                        {
+                          defaultMessage:
+                            'No recommendations were produced for this investigation.',
+                        }
+                      )}
+                    </EuiText>
+                  </EuiFlexItem>
+                )}
               </EuiFlexGroup>
             )}
             {selectedTab === 'blindSpots' && (
@@ -716,6 +726,18 @@ export function InvestigationFlyout({
                     </InvestigationFlyoutListPanel>
                   </EuiFlexItem>
                 ))}
+                {blindSpots.length === 0 && (
+                  <EuiFlexItem grow={false}>
+                    <EuiText size="s" color="subdued">
+                      {i18n.translate(
+                        'xpack.observability.nightshift.investigation.flyout.emptyBlindSpots',
+                        {
+                          defaultMessage: 'No blind spots were identified for this investigation.',
+                        }
+                      )}
+                    </EuiText>
+                  </EuiFlexItem>
+                )}
               </EuiFlexGroup>
             )}
             {selectedTab === 'hypotheses' && (
@@ -725,7 +747,7 @@ export function InvestigationFlyout({
                 data-test-subj="nightshiftInvestigationFlyoutHypotheses"
               >
                 {hypotheses.map((hypothesis, index) => (
-                  <EuiFlexItem key={hypothesis.candidate} grow={false}>
+                  <EuiFlexItem key={`hypothesis-${index}-${hypothesis.candidate}`} grow={false}>
                     <InvestigationFlyoutListPanel>
                       <HypothesisRow
                         candidate={hypothesis.candidate}
@@ -739,6 +761,18 @@ export function InvestigationFlyout({
                     </InvestigationFlyoutListPanel>
                   </EuiFlexItem>
                 ))}
+                {hypotheses.length === 0 && (
+                  <EuiFlexItem grow={false}>
+                    <EuiText size="s" color="subdued">
+                      {i18n.translate(
+                        'xpack.observability.nightshift.investigation.flyout.emptyHypotheses',
+                        {
+                          defaultMessage: 'No hypotheses were recorded for this investigation.',
+                        }
+                      )}
+                    </EuiText>
+                  </EuiFlexItem>
+                )}
               </EuiFlexGroup>
             )}
           </>

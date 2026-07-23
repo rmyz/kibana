@@ -6,21 +6,18 @@
  */
 
 import React from 'react';
+import moment from 'moment';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { EuiProvider } from '@elastic/eui';
 import { I18nProvider } from '@kbn/i18n-react';
 import type { InvestigationState, SignificantEvent } from '@kbn/significant-events-schema';
-import { useInvestigationState } from '@kbn/investigation-output';
+import type { InvestigationStatus } from '@kbn/investigation-output';
 import { EventInvestigation } from './event_investigation';
 
 const mockOpenChat = jest.fn();
 
 jest.mock('@kbn/kibana-react-plugin/public', () => ({
   useUiSetting: () => 'MMM D, YYYY @ HH:mm:ss.SSS',
-}));
-
-jest.mock('@kbn/investigation-output', () => ({
-  useInvestigationState: jest.fn(),
 }));
 
 jest.mock('../../../utils/kibana_react', () => ({
@@ -31,8 +28,6 @@ jest.mock('../../../utils/kibana_react', () => ({
     },
   }),
 }));
-
-const mockUseInvestigationState = useInvestigationState as jest.Mock;
 
 const mockEvent = (overrides: Partial<SignificantEvent> = {}): SignificantEvent => ({
   '@timestamp': '2026-07-10T12:00:00Z',
@@ -65,11 +60,33 @@ Checkout deploy introduced a regression.
   gaps_found: ['Missing trace coverage · No spans for payment gateway calls.'],
 };
 
-const renderInvestigation = (event: SignificantEvent) =>
+const renderInvestigation = (
+  event: SignificantEvent,
+  {
+    investigation,
+    status = 'complete',
+    state = completeState,
+    error,
+    conversationId = 'conv-123',
+  }: {
+    investigation?: NonNullable<SignificantEvent['investigations']>[number];
+    status?: InvestigationStatus;
+    state?: InvestigationState;
+    error?: string;
+    conversationId?: string;
+  } = {}
+) =>
   render(
     <I18nProvider>
       <EuiProvider>
-        <EventInvestigation event={event} />
+        <EventInvestigation
+          event={event}
+          investigation={investigation}
+          status={status}
+          state={state}
+          error={error}
+          conversationId={conversationId}
+        />
       </EuiProvider>
     </I18nProvider>
   );
@@ -77,12 +94,6 @@ const renderInvestigation = (event: SignificantEvent) =>
 describe('EventInvestigation', () => {
   beforeEach(() => {
     mockOpenChat.mockClear();
-    mockUseInvestigationState.mockReturnValue({
-      status: 'complete',
-      state: completeState,
-      error: undefined,
-      conversationId: 'conv-123',
-    });
   });
 
   it('renders the empty state when there are no investigations', () => {
@@ -98,32 +109,20 @@ describe('EventInvestigation', () => {
   });
 
   it('renders the latest investigation summary and opens the flyout', () => {
-    renderInvestigation(
-      mockEvent({
-        investigations: [
-          {
-            workflow_execution_id: 'exec-old',
-            started_at: '2026-07-10T11:00:00Z',
-            completed_at: '2026-07-10T11:05:00Z',
-          },
-          {
-            workflow_execution_id: 'exec-latest',
-            started_at: '2026-07-10T12:00:00Z',
-            completed_at: '2026-07-10T12:05:00Z',
-          },
-        ],
-      })
-    );
+    renderInvestigation(mockEvent(), {
+      investigation: {
+        workflow_execution_id: 'exec-latest',
+        started_at: '2026-07-10T12:00:00Z',
+        completed_at: '2026-07-10T12:05:00Z',
+      },
+    });
 
-    expect(mockUseInvestigationState).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workflowExecutionId: 'exec-latest',
-        isRunning: false,
-      })
-    );
     expect(screen.getByTestId('nightshiftInvestigationSummaryCard')).toBeInTheDocument();
     expect(screen.getByTestId('nightshiftInvestigationHeadline')).toHaveTextContent(
       'Deployment regression in checkout service'
+    );
+    expect(screen.getByTestId('nightshiftInvestigationTimeLabel')).toHaveTextContent(
+      `${moment('2026-07-10T12:00:00Z').format('HH:mm')} (5 min)`
     );
 
     fireEvent.click(screen.getByTestId('nightshiftInvestigationShowDetailsButton'));
@@ -139,17 +138,13 @@ describe('EventInvestigation', () => {
   });
 
   it('opens the flyout when More recommendations is clicked', () => {
-    renderInvestigation(
-      mockEvent({
-        investigations: [
-          {
-            workflow_execution_id: 'exec-latest',
-            started_at: '2026-07-10T12:00:00Z',
-            completed_at: '2026-07-10T12:05:00Z',
-          },
-        ],
-      })
-    );
+    renderInvestigation(mockEvent(), {
+      investigation: {
+        workflow_execution_id: 'exec-latest',
+        started_at: '2026-07-10T12:00:00Z',
+        completed_at: '2026-07-10T12:05:00Z',
+      },
+    });
 
     fireEvent.click(screen.getByTestId('nightshiftInvestigationMoreRecommendationsLink'));
     expect(screen.getByTestId('nightshiftInvestigationFlyout')).toBeInTheDocument();
@@ -160,7 +155,11 @@ describe('EventInvestigation', () => {
   });
 
   it('shows ongoing investigation content when the hook reports running status', () => {
-    mockUseInvestigationState.mockReturnValue({
+    renderInvestigation(mockEvent(), {
+      investigation: {
+        workflow_execution_id: 'exec-running',
+        started_at: '2026-07-10T12:00:00Z',
+      },
       status: 'running',
       state: {
         summary: 'Determine whether the deploy caused the spike.',
@@ -172,24 +171,23 @@ describe('EventInvestigation', () => {
           },
         ],
       },
-      error: undefined,
       conversationId: undefined,
     });
-
-    renderInvestigation(
-      mockEvent({
-        investigations: [
-          {
-            workflow_execution_id: 'exec-running',
-            started_at: '2026-07-10T12:00:00Z',
-          },
-        ],
-      })
-    );
 
     expect(screen.getByText('Checking hypotheses')).toBeInTheDocument();
     expect(screen.getByTestId('nightshiftInvestigationGoalPreview')).toHaveTextContent(
       'Determine whether the deploy caused the spike.'
     );
+  });
+
+  it('shows a warning when the investigation lacks workflow details', () => {
+    renderInvestigation(mockEvent(), {
+      investigation: {
+        workflow_execution_id: '',
+        started_at: '2026-07-10T12:00:00Z',
+      },
+    });
+
+    expect(screen.getByTestId('nightshiftInvestigationMissingWorkflowCallout')).toBeInTheDocument();
   });
 });

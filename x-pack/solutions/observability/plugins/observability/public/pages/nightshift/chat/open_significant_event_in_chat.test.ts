@@ -9,9 +9,6 @@ import type { SignificantEvent } from '@kbn/significant-events-schema';
 import {
   buildInvestigationConversationChatOptions,
   buildNewSignificantEventChatOptions,
-  getCompletedInvestigations,
-  getLatestCompletedInvestigation,
-  hasRunningInvestigationOnEvent,
 } from './open_significant_event_in_chat';
 
 const mockEvent = (overrides: Partial<SignificantEvent> = {}): SignificantEvent => ({
@@ -51,57 +48,5 @@ describe('open_significant_event_in_chat', () => {
     expect(buildInvestigationConversationChatOptions('conv-abc')).toEqual({
       conversationId: 'conv-abc',
     });
-  });
-
-  it('getCompletedInvestigations filters to completed_at', () => {
-    const event = mockEvent({
-      investigations: [
-        { workflow_execution_id: 'w1', started_at: '2026-01-01T00:00:00Z' },
-        {
-          workflow_execution_id: 'w2',
-          started_at: '2026-01-01T00:01:00Z',
-          completed_at: '2026-01-01T00:05:00Z',
-        },
-      ],
-    });
-
-    expect(getCompletedInvestigations(event)).toHaveLength(1);
-    expect(getCompletedInvestigations(event)[0].workflow_execution_id).toBe('w2');
-  });
-
-  it('getLatestCompletedInvestigation returns the last completed investigation', () => {
-    const event = mockEvent({
-      investigations: [
-        {
-          workflow_execution_id: 'w1',
-          started_at: '2026-01-01T00:00:00Z',
-          completed_at: '2026-01-01T00:02:00Z',
-        },
-        {
-          workflow_execution_id: 'w2',
-          started_at: '2026-01-01T00:03:00Z',
-          completed_at: '2026-01-01T00:05:00Z',
-        },
-      ],
-    });
-
-    expect(getLatestCompletedInvestigation(event)?.workflow_execution_id).toBe('w2');
-  });
-
-  it('hasRunningInvestigationOnEvent is true when any investigation lacks completed_at', () => {
-    expect(
-      hasRunningInvestigationOnEvent(
-        mockEvent({
-          investigations: [
-            {
-              workflow_execution_id: 'w1',
-              started_at: '2026-01-01T00:00:00Z',
-              completed_at: '2026-01-01T00:05:00Z',
-            },
-            { workflow_execution_id: 'w2', started_at: '2026-01-01T00:06:00Z' },
-          ],
-        })
-      )
-    ).toBe(true);
   });
 });

@@ -82,9 +82,22 @@ function SignificantEventStatusCard({
       hasBorder={false}
       hasShadow={false}
       onClick={isInteractive ? onClick : undefined}
+      onKeyDown={
+        isInteractive
+          ? (keyboardEvent: React.KeyboardEvent) => {
+              if (keyboardEvent.key !== 'Enter' && keyboardEvent.key !== ' ') {
+                return;
+              }
+              keyboardEvent.preventDefault();
+              onClick();
+            }
+          : undefined
+      }
       onMouseDown={
         isInteractive ? (mouseEvent: React.MouseEvent) => mouseEvent.preventDefault() : undefined
       }
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
     >
       <EuiFlexGroup alignItems="flexStart" direction="column" gutterSize="s" responsive={false}>
         <EuiFlexItem grow={false}>

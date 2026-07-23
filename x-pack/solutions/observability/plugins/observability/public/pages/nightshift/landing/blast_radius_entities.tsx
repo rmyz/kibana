@@ -6,7 +6,7 @@
  */
 
 import { css } from '@emotion/react';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   EuiBadge,
   EuiButtonEmpty,
@@ -19,16 +19,14 @@ import {
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { nightshiftInteractiveSurfaceTransition } from '../common/nightshift_transition';
+import type { BlastRadiusChip } from './blast_radius_chips';
 
 export const MAX_VISIBLE_BLAST_RADIUS_ENTITIES = 10;
 
-export interface BlastRadiusEntity {
+interface BlastRadiusEntityButtonProps {
   count: number;
-  name: string;
-}
-
-interface BlastRadiusEntityButtonProps extends BlastRadiusEntity {
   isSelected: boolean;
+  name: string;
   onClick: () => void;
 }
 
@@ -112,19 +110,23 @@ function BlastRadiusEntityButton({
 }
 
 export interface BlastRadiusEntitiesProps {
-  entities: BlastRadiusEntity[];
-  onSelect: (name: string) => void;
-  selectedEntity?: string;
+  entities: BlastRadiusChip[];
+  onSelect: (chipKey: string) => void;
+  selectedEntityKey?: string;
 }
 
 export function BlastRadiusEntities({
   entities,
   onSelect,
-  selectedEntity,
+  selectedEntityKey,
 }: BlastRadiusEntitiesProps): React.ReactElement | null {
   const { euiTheme } = useEuiTheme();
   const titleFontSize = useEuiFontSize('s');
   const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [entities]);
 
   const hasOverflow = entities.length > MAX_VISIBLE_BLAST_RADIUS_ENTITIES;
   const visibleEntities = useMemo(() => {
@@ -174,13 +176,13 @@ export function BlastRadiusEntities({
             gap: calc(${euiTheme.size.xs} + ${euiTheme.size.xxs});
           `}
         >
-          {visibleEntities.map(({ count, name }) => (
-            <EuiFlexItem grow={false} key={name}>
+          {visibleEntities.map(({ count, key, name }) => (
+            <EuiFlexItem grow={false} key={key}>
               <BlastRadiusEntityButton
                 count={count}
-                isSelected={selectedEntity === name}
+                isSelected={selectedEntityKey === key}
                 name={name}
-                onClick={() => onSelect(name)}
+                onClick={() => onSelect(key)}
               />
             </EuiFlexItem>
           ))}

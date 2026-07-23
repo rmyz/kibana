@@ -12,7 +12,7 @@ import type {
   SignalEntry,
   SignificantEvent,
 } from '@kbn/significant-events-schema';
-import { getBlastRadiusEntryChipName, getFeatureDisplayName } from '../landing/blast_radius_chips';
+import { getBlastRadiusEntryChipName, getFeatureDisplayName } from '../common/blast_radius_display';
 
 export interface DetectionEntityRef {
   key: string;
@@ -21,8 +21,6 @@ export interface DetectionEntityRef {
   feature?: Feature;
   isStreamFallback?: boolean;
 }
-
-const MAX_STREAM_ENTITY_FALLBACK = 3;
 
 const featureMatchesCausal = (feature: Feature, featureId: string): boolean =>
   feature.uuid === featureId || feature.id === featureId;
@@ -127,25 +125,6 @@ export const getDetectionEntities = (
   }
 
   pushBlastRadiusEntities(event, features, pushEntity);
-
-  if (entities.length > 0) {
-    return entities;
-  }
-
-  for (const feature of streamFeatures) {
-    if (feature.type !== 'entity') {
-      continue;
-    }
-    pushEntity({
-      key: feature.uuid,
-      label: getFeatureDisplayName(feature),
-      streamName: feature.stream_name,
-      feature,
-    });
-    if (entities.length >= MAX_STREAM_ENTITY_FALLBACK) {
-      break;
-    }
-  }
 
   if (entities.length > 0) {
     return entities;

@@ -53,7 +53,7 @@ export function getChangePointLabel(type?: ChangePointType): string {
  * list + flyout timestamps stay aligned.
  */
 export const ILLUSTRATIVE_SERIES_POINTS = 28;
-export const ILLUSTRATIVE_POINT_INTERVAL_MS = 60_000;
+export const ILLUSTRATIVE_POINT_INTERVAL_MS = 300_000;
 
 /**
  * Index in an illustrative series where the change-point shape flips. Used to

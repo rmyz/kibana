@@ -269,32 +269,48 @@ export function EntityFlyout({
         </EuiCodeBlock>
       </EuiFlyoutBody>
 
-      {agentBuilder && enableChatAttachment && (
+      {agentBuilder && (
         <EuiFlyoutFooter
           css={css`
             background: ${euiTheme.colors.backgroundBasePlain};
             border-top: ${euiTheme.border.thin};
           `}
         >
-          <EuiFlexGroup justifyContent="flexEnd" responsive={false}>
-            <EuiFlexItem grow={false}>
-              <AiButton
-                variant="empty"
-                size="s"
-                iconType="productAgent"
-                iconSide="left"
-                data-test-subj="nightshiftEntityFlyoutChatButton"
-                onClick={handleOpenInChat}
-              >
-                {i18n.translate(
-                  'xpack.observability.nightshift.entityFlyout.openInChatButtonLabel',
-                  {
-                    defaultMessage: 'Open in chat',
-                  }
-                )}
-              </AiButton>
-            </EuiFlexItem>
-          </EuiFlexGroup>
+          {enableChatAttachment ? (
+            <EuiFlexGroup justifyContent="flexEnd" responsive={false}>
+              <EuiFlexItem grow={false}>
+                <AiButton
+                  variant="empty"
+                  size="s"
+                  iconType="productAgent"
+                  iconSide="left"
+                  data-test-subj="nightshiftEntityFlyoutChatButton"
+                  onClick={handleOpenInChat}
+                >
+                  {i18n.translate(
+                    'xpack.observability.nightshift.entityFlyout.openInChatButtonLabel',
+                    {
+                      defaultMessage: 'Open in chat',
+                    }
+                  )}
+                </AiButton>
+              </EuiFlexItem>
+            </EuiFlexGroup>
+          ) : (
+            <EuiText
+              size="s"
+              color="subdued"
+              data-test-subj="nightshiftEntityFlyoutChatUnavailable"
+            >
+              {i18n.translate(
+                'xpack.observability.nightshift.entityFlyout.chatUnavailableDescription',
+                {
+                  defaultMessage:
+                    'Open in chat is unavailable for stream-level entities without Knowledge Indicator features.',
+                }
+              )}
+            </EuiText>
+          )}
         </EuiFlyoutFooter>
       )}
     </EuiFlyout>

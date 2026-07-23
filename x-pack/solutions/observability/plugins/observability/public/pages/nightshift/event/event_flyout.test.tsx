@@ -34,15 +34,7 @@ jest.mock('../hooks/use_fetch_stream_features', () => ({
     isError: false,
     refetch: jest.fn(),
   }),
-}));
-
-jest.mock('../hooks/use_fetch_stream_features', () => ({
-  useFetchStreamFeatures: () => ({
-    data: [],
-    isLoading: false,
-    isError: false,
-    refetch: jest.fn(),
-  }),
+  useFetchStreamFeaturesByStream: () => new Map<string, never[]>(),
 }));
 
 jest.mock('../hooks/use_fetch_event_lifecycle', () => ({
@@ -144,9 +136,21 @@ describe('EventFlyout', () => {
   });
 
   it('renders the footer chat button and opens a new chat when clicked', () => {
-    renderFlyout();
+    renderFlyout({
+      event: {
+        ...mockEvent,
+        investigations: [
+          {
+            workflow_execution_id: 'exec-1',
+            started_at: '2026-07-10T12:00:00Z',
+            completed_at: '2026-07-10T12:05:00Z',
+          },
+        ],
+      },
+    });
 
     fireEvent.click(screen.getByTestId('nightshiftEventFlyoutChatButton'));
+    fireEvent.click(screen.getByTestId('nightshiftEventFlyoutStartNewChatItem'));
     expect(mockOpenChat).toHaveBeenCalledWith(
       expect.objectContaining({
         newConversation: true,

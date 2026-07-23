@@ -9,6 +9,7 @@ import { css } from '@emotion/react';
 import React from 'react';
 import {
   EuiBadge,
+  EuiButtonEmpty,
   EuiFlexGroup,
   EuiFlexItem,
   EuiPanel,
@@ -26,6 +27,8 @@ export interface SignificantEventListProps {
   events: SignificantEvent[];
   selectedEventUuid?: string;
   statusColor: 'danger' | 'success';
+  filterActive?: boolean;
+  onClearFilter?: () => void;
   onEventClick?: (event: SignificantEvent) => void;
   onChatClick?: (event: SignificantEvent) => void;
   sectionRef?: React.Ref<HTMLElement>;
@@ -36,6 +39,8 @@ export function SignificantEventList({
   events,
   selectedEventUuid,
   statusColor,
+  filterActive = false,
+  onClearFilter,
   onEventClick,
   onChatClick,
   sectionRef,
@@ -78,11 +83,34 @@ export function SignificantEventList({
         <EuiPanel hasBorder hasShadow={false} paddingSize="l" color="subdued" css={roundedPanelCss}>
           <EuiText textAlign="center" color="subdued" size="s">
             <p>
-              {i18n.translate('xpack.observability.nightshift.list.emptyDescription', {
-                defaultMessage: 'No significant events found',
-              })}
+              {filterActive
+                ? i18n.translate('xpack.observability.nightshift.list.filteredEmptyDescription', {
+                    defaultMessage: 'No events match this filter.',
+                  })
+                : i18n.translate('xpack.observability.nightshift.list.emptyDescription', {
+                    defaultMessage: 'No significant events found',
+                  })}
             </p>
           </EuiText>
+          {filterActive && onClearFilter && (
+            <>
+              <EuiSpacer size="s" />
+              <EuiFlexGroup justifyContent="center" responsive={false}>
+                <EuiFlexItem grow={false}>
+                  <EuiButtonEmpty
+                    data-test-subj="nightshiftClearBlastRadiusFilterButton"
+                    flush="left"
+                    onClick={onClearFilter}
+                    size="s"
+                  >
+                    {i18n.translate('xpack.observability.nightshift.list.clearFilterButton', {
+                      defaultMessage: 'Clear filter',
+                    })}
+                  </EuiButtonEmpty>
+                </EuiFlexItem>
+              </EuiFlexGroup>
+            </>
+          )}
         </EuiPanel>
       </section>
     );

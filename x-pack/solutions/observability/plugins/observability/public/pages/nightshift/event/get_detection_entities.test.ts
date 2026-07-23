@@ -74,15 +74,21 @@ describe('getDetectionEntities', () => {
     });
   });
 
-  it('falls back to entity-type stream features when causal features are absent', () => {
+  it('falls back to the detection stream name when causal features and blast radius are absent', () => {
     const feature = mockFeature();
     const entities = getDetectionEntities(mockEvent(), mockDetection(), [
       feature,
       mockFeature({ uuid: 'other', type: 'schema', title: 'schema feature' }),
     ]);
 
-    expect(entities).toHaveLength(1);
-    expect(entities[0].feature).toEqual(feature);
+    expect(entities).toEqual([
+      {
+        key: 'logs.web-frontend',
+        label: 'logs.web-frontend',
+        streamName: 'logs.web-frontend',
+        isStreamFallback: true,
+      },
+    ]);
   });
 
   it('uses blast radius entries when causal features are absent', () => {
@@ -127,13 +133,20 @@ describe('getDetectionEntities', () => {
     ]);
   });
 
-  it('caps entity-type stream features when causal features are absent', () => {
+  it('does not synthesize entity chips from stream features when causal features are absent', () => {
     const features = Array.from({ length: 5 }, (_, index) =>
       mockFeature({ uuid: `feature-${index}`, id: `entity-${index}`, title: `entity-${index}` })
     );
     const entities = getDetectionEntities(mockEvent(), mockDetection(), features);
 
-    expect(entities).toHaveLength(3);
+    expect(entities).toEqual([
+      {
+        key: 'logs.web-frontend',
+        label: 'logs.web-frontend',
+        streamName: 'logs.web-frontend',
+        isStreamFallback: true,
+      },
+    ]);
   });
 });
 

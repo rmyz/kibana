@@ -7,10 +7,7 @@
 
 import type { OpenConversationSidebarOptions } from '@kbn/agent-builder-browser';
 import { i18n } from '@kbn/i18n';
-import type {
-  SignificantEvent,
-  SignificantEventInvestigation,
-} from '@kbn/significant-events-schema';
+import type { SignificantEvent } from '@kbn/significant-events-schema';
 import { SIGNIFICANT_EVENT_ATTACHMENT_TYPE } from '@kbn/significant-events-plugin/common';
 import { formatChatAttachmentDescription } from './chat_attachment_description';
 
@@ -44,16 +41,3 @@ export const buildInvestigationConversationChatOptions = (
 ): OpenSignificantEventChatOptions => ({
   conversationId,
 });
-
-export const getCompletedInvestigations = (
-  event: SignificantEvent
-): SignificantEventInvestigation[] =>
-  (event.investigations ?? []).filter(({ completed_at: completedAt }) => completedAt != null);
-
-export const hasRunningInvestigationOnEvent = (event: SignificantEvent): boolean =>
-  (event.investigations ?? []).some(({ completed_at: completedAt }) => completedAt == null);
-
-/** Investigations are appended in run order on the event doc. */
-export const getLatestCompletedInvestigation = (
-  event: SignificantEvent
-): SignificantEventInvestigation | undefined => getCompletedInvestigations(event).at(-1);
