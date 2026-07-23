@@ -20,7 +20,6 @@ import {
   EuiFlyoutHeader,
   EuiHorizontalRule,
   EuiIcon,
-  EuiLoadingSpinner,
   EuiNotificationBadge,
   EuiPanel,
   EuiSpacer,
@@ -49,10 +48,12 @@ import {
 } from './open_investigation_item_in_chat';
 import { InvestigationFormattedText } from './investigation_formatted_text';
 import { TruncatableSummary } from '../common/truncatable_summary';
+import { FlyoutSectionTitle } from '../common/flyout_section_title';
 import {
   GradientOutlinedStatusBadge,
   InvestigationCompleteCheckIcon,
   InvestigationGradientLabel,
+  InvestigatingStatusDots,
 } from './investigation_status_badge';
 import { InvestigationItemChatButton } from './investigation_item_chat_button';
 import {
@@ -71,6 +72,7 @@ import {
   getInvestigationTimeLabel,
   mapBlindSpots,
   parseInvestigationRecommendations,
+  sortInvestigationHypotheses,
   type InvestigationRecommendation,
 } from './investigation_presentation';
 
@@ -107,6 +109,18 @@ const hypothesisConfirmedAriaLabel = i18n.translate(
 );
 
 const investigationFlyoutRowActionClassName = 'nightshiftInvestigationFlyoutRowAction';
+const INVESTIGATION_FLYOUT_BODY_FONT_SIZE = '14px';
+
+const flyoutBodyTextCss = css`
+  font-size: ${INVESTIGATION_FLYOUT_BODY_FONT_SIZE};
+  line-height: 1.5;
+`;
+
+function FlyoutFormattedText(
+  props: Omit<React.ComponentProps<typeof InvestigationFormattedText>, 'textSize' | 'fontSize'>
+): React.ReactElement {
+  return <InvestigationFormattedText fontSize={INVESTIGATION_FLYOUT_BODY_FONT_SIZE} {...props} />;
+}
 
 function InvestigationFlyoutListPanel({
   children,
@@ -233,7 +247,7 @@ function InvestigationFlyoutRow({
 }
 
 function InvestigationFlyoutBadge({ status }: { status: InvestigationStatus }): React.ReactElement {
-  const isRunning = status === 'running' || status === 'loading';
+  const { euiTheme } = useEuiTheme();
 
   if (status === 'complete') {
     return (
@@ -244,13 +258,29 @@ function InvestigationFlyoutBadge({ status }: { status: InvestigationStatus }): 
     );
   }
 
+  if (status === 'running' || status === 'loading') {
+    return (
+      <EuiBadge color="hollow" data-test-subj="nightshiftInvestigationFlyoutProgressBadge">
+        <span
+          css={css`
+            align-items: center;
+            color: ${euiTheme.colors.textSubdued};
+            display: inline-flex;
+            gap: calc(${euiTheme.size.xs} + ${euiTheme.size.xxs});
+          `}
+        >
+          {i18n.translate('xpack.observability.nightshift.investigation.flyoutInProgress', {
+            defaultMessage: 'In progress',
+          })}
+          <InvestigatingStatusDots testSubj="nightshiftInvestigationFlyoutProgressDots" />
+        </span>
+      </EuiBadge>
+    );
+  }
+
   return (
     <EuiBadge color="hollow" data-test-subj="nightshiftInvestigationFlyoutProgressBadge">
-      {isRunning
-        ? i18n.translate('xpack.observability.nightshift.investigation.flyoutInProgress', {
-            defaultMessage: 'In progress ...',
-          })
-        : getInvestigationStatusLabel(status)}
+      {getInvestigationStatusLabel(status)}
     </EuiBadge>
   );
 }
@@ -273,7 +303,7 @@ function RecommendationRow({
         hasExpandableContent ? (
           <>
             {recommendation.description && (
-              <InvestigationFormattedText text={recommendation.description} />
+              <FlyoutFormattedText text={recommendation.description} />
             )}
             {recommendation.code && (
               <>
@@ -296,7 +326,7 @@ function RecommendationRow({
     >
       <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
         <EuiFlexItem grow>
-          <InvestigationFormattedText text={recommendation.title} />
+          <FlyoutFormattedText text={recommendation.title} bold />
         </EuiFlexItem>
         {recommendation.confidence != null && (
           <EuiFlexItem grow={false}>
@@ -344,13 +374,7 @@ function HypothesisStatusRow({
     >
       {status === 'investigating' ? (
         <span css={iconSlotCss}>
-          <EuiLoadingSpinner
-            size="s"
-            css={css`
-              height: 16px;
-              width: 16px;
-            `}
-          />
+          <InvestigatingStatusDots testSubj="nightshiftInvestigationFlyoutHypothesisCheckingDots" />
         </span>
       ) : status === 'confirmed' ? (
         <InvestigationCompleteCheckIcon
@@ -413,7 +437,7 @@ function HypothesisRow({
     <InvestigationFlyoutRow
       testSubj={`nightshiftInvestigationFlyoutHypothesis-${index}`}
       showExpandedSeparator={Boolean(reason)}
-      expandableContent={reason ? <InvestigationFormattedText text={reason} /> : undefined}
+      expandableContent={reason ? <FlyoutFormattedText text={reason} /> : undefined}
       action={
         <InvestigationItemChatButton
           tooltip={hypothesisChatTooltip}
@@ -426,7 +450,7 @@ function HypothesisRow({
         <EuiFlexItem grow={false}>
           <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
             <EuiFlexItem grow>
-              <InvestigationFormattedText text={candidate} bold />
+              <FlyoutFormattedText text={candidate} bold />
             </EuiFlexItem>
             <EuiFlexItem grow={false}>
               <EuiBadge color={isConfidenceWinner ? 'success' : 'default'}>
@@ -475,11 +499,11 @@ export function InvestigationFlyout({
   const conclusionBody = getConclusionBody(state?.conclusion);
   const recommendations = useMemo(() => parseInvestigationRecommendations(state), [state]);
   const blindSpots = useMemo(() => mapBlindSpots(state?.gaps_found), [state?.gaps_found]);
-  const hypotheses = state?.hypotheses ?? [];
-  const topHypothesisConfidence = useMemo(() => {
-    const list = state?.hypotheses ?? [];
-    return list.length > 0 ? Math.max(...list.map((hypothesis) => hypothesis.confidence)) : 0;
-  }, [state?.hypotheses]);
+  const hypotheses = useMemo(
+    () => sortInvestigationHypotheses(state?.hypotheses ?? []),
+    [state?.hypotheses]
+  );
+  const topHypothesisConfidence = hypotheses[0]?.confidence ?? 0;
   const timeLabel = getInvestigationTimeLabel({
     startedAt: investigation.started_at,
     endedAt: investigation.completed_at,
@@ -591,62 +615,61 @@ export function InvestigationFlyout({
       <EuiFlyoutBody>
         {isRunning ? (
           <>
-            <EuiTitle size="xs">
-              <h3>
-                {i18n.translate('xpack.observability.nightshift.investigation.goalTitle', {
-                  defaultMessage: 'Goal',
-                })}
-              </h3>
-            </EuiTitle>
+            <FlyoutSectionTitle>
+              {i18n.translate('xpack.observability.nightshift.investigation.goalTitle', {
+                defaultMessage: 'Goal',
+              })}
+            </FlyoutSectionTitle>
             <EuiSpacer size="s" />
-            <InvestigationFormattedText text={goalText ?? eventTitle} subdued />
-            <EuiSpacer size="l" />
-            <EuiTitle size="xs">
-              <h3>
-                {i18n.translate('xpack.observability.nightshift.investigation.hypothesesTitle', {
-                  defaultMessage: 'Hypotheses',
-                })}
-              </h3>
-            </EuiTitle>
-            <EuiSpacer size="s" />
-            <EuiFlexGroup direction="column" gutterSize="s">
-              {hypotheses.map((hypothesis, index) => (
-                <EuiFlexItem key={hypothesis.candidate} grow={false}>
-                  <InvestigationFlyoutListPanel>
-                    <HypothesisRow
-                      candidate={hypothesis.candidate}
-                      confidence={hypothesis.confidence}
-                      status={hypothesis.status}
-                      reason={hypothesis.reason}
-                      index={index}
-                      isConfidenceWinner={hypothesis.confidence === topHypothesisConfidence}
-                      onOpenInChat={() => openHypothesisInChat(hypothesis, index)}
-                    />
-                  </InvestigationFlyoutListPanel>
-                </EuiFlexItem>
-              ))}
-            </EuiFlexGroup>
+            <FlyoutFormattedText text={goalText ?? eventTitle} />
+            {hypotheses.length > 0 && (
+              <>
+                <EuiSpacer size="l" />
+                <FlyoutSectionTitle>
+                  {i18n.translate('xpack.observability.nightshift.investigation.hypothesesTitle', {
+                    defaultMessage: 'Hypotheses',
+                  })}
+                </FlyoutSectionTitle>
+                <EuiSpacer size="s" />
+                <EuiFlexGroup direction="column" gutterSize="s">
+                  {hypotheses.map((hypothesis, index) => (
+                    <EuiFlexItem key={hypothesis.candidate} grow={false}>
+                      <InvestigationFlyoutListPanel>
+                        <HypothesisRow
+                          candidate={hypothesis.candidate}
+                          confidence={hypothesis.confidence}
+                          status={hypothesis.status}
+                          reason={hypothesis.reason}
+                          index={index}
+                          isConfidenceWinner={hypothesis.confidence === topHypothesisConfidence}
+                          onOpenInChat={() => openHypothesisInChat(hypothesis, index)}
+                        />
+                      </InvestigationFlyoutListPanel>
+                    </EuiFlexItem>
+                  ))}
+                </EuiFlexGroup>
+              </>
+            )}
           </>
         ) : (
           <>
-            <EuiTitle size="xs">
-              <h3>
-                {i18n.translate('xpack.observability.nightshift.investigation.conclusionTitle', {
-                  defaultMessage: 'Conclusion',
-                })}
-              </h3>
-            </EuiTitle>
+            <FlyoutSectionTitle>
+              {i18n.translate('xpack.observability.nightshift.investigation.conclusionTitle', {
+                defaultMessage: 'Conclusion',
+              })}
+            </FlyoutSectionTitle>
             <EuiSpacer size="s" />
             {conclusionBody ? (
               <TruncatableSummary
                 summary={conclusionBody}
                 testSubj="nightshiftInvestigationFlyoutConclusion"
+                fontSize={INVESTIGATION_FLYOUT_BODY_FONT_SIZE}
               />
             ) : (
               <EuiText
-                size="s"
                 color="subdued"
                 data-test-subj="nightshiftInvestigationFlyoutConclusion"
+                css={flyoutBodyTextCss}
               >
                 {eventTitle}
               </EuiText>
@@ -689,7 +712,7 @@ export function InvestigationFlyout({
                 ))}
                 {recommendations.length === 0 && (
                   <EuiFlexItem grow={false}>
-                    <EuiText size="s" color="subdued">
+                    <EuiText color="subdued" css={flyoutBodyTextCss}>
                       {i18n.translate(
                         'xpack.observability.nightshift.investigation.flyout.emptyRecommendations',
                         {
@@ -721,14 +744,14 @@ export function InvestigationFlyout({
                           />
                         }
                       >
-                        <InvestigationFormattedText text={formatBlindSpotMarkdown(item)} />
+                        <FlyoutFormattedText text={formatBlindSpotMarkdown(item)} />
                       </InvestigationFlyoutRow>
                     </InvestigationFlyoutListPanel>
                   </EuiFlexItem>
                 ))}
                 {blindSpots.length === 0 && (
                   <EuiFlexItem grow={false}>
-                    <EuiText size="s" color="subdued">
+                    <EuiText color="subdued" css={flyoutBodyTextCss}>
                       {i18n.translate(
                         'xpack.observability.nightshift.investigation.flyout.emptyBlindSpots',
                         {
@@ -763,7 +786,7 @@ export function InvestigationFlyout({
                 ))}
                 {hypotheses.length === 0 && (
                   <EuiFlexItem grow={false}>
-                    <EuiText size="s" color="subdued">
+                    <EuiText color="subdued" css={flyoutBodyTextCss}>
                       {i18n.translate(
                         'xpack.observability.nightshift.investigation.flyout.emptyHypotheses',
                         {
@@ -781,14 +804,18 @@ export function InvestigationFlyout({
         {error && (
           <>
             <EuiSpacer size="m" />
-            <EuiText size="s" color="danger" data-test-subj="nightshiftInvestigationFlyoutError">
+            <EuiText
+              color="danger"
+              css={flyoutBodyTextCss}
+              data-test-subj="nightshiftInvestigationFlyoutError"
+            >
               {error}
             </EuiText>
           </>
         )}
       </EuiFlyoutBody>
 
-      {agentBuilder && (
+      {agentBuilder && !isRunning && (
         <EuiFlyoutFooter
           css={css`
             background: ${euiTheme.colors.backgroundBasePlain};

@@ -13,17 +13,18 @@ import {
 } from '@kbn/significant-events-schema';
 
 /**
- * Nightshift surfaces exactly two triage states, both derived from the statuses
- * defined in `@kbn/significant-events-schema`:
- * - "Investigating" (needs action): `open` (actionable)
- * - "Investigated" (resolved): `closed` (resolved incidents) and `dismissed`
- *   (false positives), which no longer need attention.
+ * Nightshift surfaces two triage buckets derived from `@kbn/significant-events-schema`
+ * statuses:
+ * - Needs action: `open`
+ * - Resolved: `closed` and `dismissed`
  *
  * The `STATUS_GROUP` map below is the single source of truth for this grouping so
- * the summary cards, the event lists, and the per-event status badge cannot drift
- * apart. Because it is a `Record<SignificantEventStatus, StatusGroup>`, adding a
- * status to the schema without classifying it here is a compile-time error, so a
- * new status can never silently vanish from the page.
+ * the summary cards and event lists cannot drift apart. Because it is a
+ * `Record<SignificantEventStatus, StatusGroup>`, adding a status to the schema
+ * without classifying it here is a compile-time error.
+ *
+ * The "Investigating" / "Investigated" badge is derived separately from
+ * `event.investigations` (see `getInvestigationStatusLabel`).
  */
 type StatusGroup = 'needsAction' | 'resolved';
 
@@ -85,8 +86,20 @@ export const byCriticalityAndUpdatedAtDesc = (
 export const getStatusColor = (status: SignificantEventStatus): StatusColor =>
   isResolvedStatus(status) ? 'success' : 'danger';
 
-export const getStatusLabel = (status: SignificantEventStatus): string =>
-  isResolvedStatus(status)
+type SignificantEventInvestigations = NonNullable<SignificantEvent['investigations']>;
+export type SignificantEventInvestigation = SignificantEventInvestigations[number];
+
+export const getLatestInvestigation = (
+  event: Pick<SignificantEvent, 'investigations'>
+): SignificantEventInvestigation | undefined => event.investigations?.at(-1);
+
+export const isEventInvestigated = (event: Pick<SignificantEvent, 'investigations'>): boolean =>
+  getLatestInvestigation(event)?.completed_at != null;
+
+export const getInvestigationStatusLabel = (
+  event: Pick<SignificantEvent, 'investigations'>
+): string =>
+  isEventInvestigated(event)
     ? i18n.translate('xpack.observability.nightshift.event.investigatedStatusLabel', {
         defaultMessage: 'Investigated',
       })

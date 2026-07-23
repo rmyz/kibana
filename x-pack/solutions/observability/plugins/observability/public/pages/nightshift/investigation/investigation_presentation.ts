@@ -334,6 +334,11 @@ export const getConclusionBody = (conclusion: string | undefined): string | unde
   return body.replace(/^#+\s*conclusion\s*$/im, '').trim() || undefined;
 };
 
+export const sortInvestigationHypotheses = (
+  hypotheses: InvestigationHypothesis[]
+): InvestigationHypothesis[] =>
+  [...hypotheses].sort((first, second) => second.confidence - first.confidence);
+
 export const getHypothesisStatusLabel = (status: InvestigationHypothesis['status']): string => {
   switch (status) {
     case 'investigating':

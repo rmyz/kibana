@@ -19,6 +19,8 @@ export interface TruncatableSummaryProps {
   maxLength?: number;
   testSubj?: string;
   toggleTestSubj?: string;
+  textSize?: 's' | 'xs';
+  fontSize?: string;
 }
 
 export function TruncatableSummary({
@@ -26,6 +28,8 @@ export function TruncatableSummary({
   maxLength = DEFAULT_MAX_SUMMARY_LENGTH,
   testSubj,
   toggleTestSubj,
+  textSize = 's',
+  fontSize,
 }: TruncatableSummaryProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const [expanded, setExpanded] = useState(false);
@@ -43,13 +47,18 @@ export function TruncatableSummary({
   return (
     <>
       <EuiText
-        size="s"
+        size={fontSize ? undefined : textSize}
         data-test-subj={testSubj}
         css={css`
           line-height: 1.5;
+          ${fontSize ? `font-size: ${fontSize};` : ''}
         `}
       >
-        <InvestigationFormattedText text={displaySummary} />
+        <InvestigationFormattedText
+          text={displaySummary}
+          textSize={fontSize ? undefined : textSize}
+          fontSize={fontSize}
+        />
       </EuiText>
       {isSummaryLong && (
         // eslint-disable-next-line @elastic/eui/require-href-for-link

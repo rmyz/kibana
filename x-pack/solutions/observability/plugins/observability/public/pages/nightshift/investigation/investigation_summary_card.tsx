@@ -14,7 +14,6 @@ import {
   EuiFlexItem,
   EuiHorizontalRule,
   EuiIcon,
-  EuiLoadingSpinner,
   EuiPanel,
   EuiSpacer,
   EuiText,
@@ -30,7 +29,7 @@ import {
 } from './open_investigation_item_in_chat';
 import { useKibana } from '../../../utils/kibana_react';
 import { InvestigationItemChatButton } from './investigation_item_chat_button';
-import { InvestigationCompleteStatus } from './investigation_status_badge';
+import { InvestigationCompleteStatus, InvestigatingStatusDots } from './investigation_status_badge';
 import { InvestigationFormattedText } from './investigation_formatted_text';
 import {
   nightshiftBackgroundTransition,
@@ -93,7 +92,7 @@ function InvestigationStatusRow({
         {status === 'running' || status === 'loading' ? (
           <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
             <EuiFlexItem grow={false}>
-              <EuiLoadingSpinner size="m" data-test-subj="nightshiftInvestigationStatusSpinner" />
+              <InvestigatingStatusDots testSubj="nightshiftInvestigationStatusSpinner" />
             </EuiFlexItem>
             <EuiFlexItem grow={false}>
               <EuiTitle size="xxs">
@@ -266,7 +265,7 @@ function TryNextPanel({
       >
         <EuiFlexGroup alignItems="flexStart" justifyContent="spaceBetween" responsive={false}>
           <EuiFlexItem>
-            <InvestigationFormattedText text={recommendation.title} />
+            <InvestigationFormattedText text={recommendation.title} bold />
             {recommendation.description && (
               <>
                 <EuiSpacer size="xs" />
@@ -374,7 +373,7 @@ export function InvestigationSummaryCard({
               <>
                 <EuiSpacer size="s" />
                 <div data-test-subj="nightshiftInvestigationGoalPreview">
-                  <InvestigationFormattedText text={goalText} subdued />
+                  <InvestigationFormattedText text={goalText} />
                 </div>
               </>
             )}

@@ -14,6 +14,7 @@ import {
   getPrimaryHypothesis,
   mapBlindSpots,
   parseInvestigationRecommendations,
+  sortInvestigationHypotheses,
 } from './investigation_presentation';
 
 const completeState: InvestigationState = {
@@ -96,6 +97,18 @@ describe('investigation_presentation', () => {
           status: 'loading',
         })
       ).toBe('Latency spike');
+    });
+  });
+
+  describe('sortInvestigationHypotheses', () => {
+    it('sorts hypotheses by confidence descending', () => {
+      expect(
+        sortInvestigationHypotheses([
+          { candidate: 'Low confidence', confidence: 0.15, status: 'investigating' },
+          { candidate: 'High confidence', confidence: 0.7, status: 'investigating' },
+          { candidate: 'Medium confidence', confidence: 0.2, status: 'dismissed' },
+        ]).map(({ candidate }) => candidate)
+      ).toEqual(['High confidence', 'Medium confidence', 'Low confidence']);
     });
   });
 

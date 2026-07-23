@@ -13,18 +13,37 @@ export function InvestigationFormattedText({
   text,
   subdued = false,
   bold = false,
+  textSize = 's',
+  fontSize,
 }: {
   text: string;
   subdued?: boolean;
   bold?: boolean;
+  textSize?: 's' | 'xs';
+  fontSize?: string;
 }): React.ReactElement {
   const { euiTheme } = useEuiTheme();
 
   return (
     <div
-      css={
-        bold
-          ? css`
+      css={css`
+        ${fontSize
+          ? `
+              font-size: ${fontSize};
+              line-height: 1.5;
+
+              .euiMarkdownFormat,
+              .euiMarkdownFormat p,
+              .euiMarkdownFormat span,
+              .euiMarkdownFormat code,
+              .euiMarkdownFormat li {
+                font-size: inherit;
+                line-height: inherit;
+              }
+            `
+          : ''}
+        ${bold
+          ? `
               font-weight: ${euiTheme.font.weight.bold};
 
               p,
@@ -33,10 +52,13 @@ export function InvestigationFormattedText({
                 font-weight: ${euiTheme.font.weight.bold};
               }
             `
-          : undefined
-      }
+          : ''}
+      `}
     >
-      <EuiMarkdownFormat textSize="s" color={subdued ? 'subdued' : undefined}>
+      <EuiMarkdownFormat
+        textSize={fontSize ? 'relative' : textSize}
+        color={subdued ? 'subdued' : undefined}
+      >
         {text}
       </EuiMarkdownFormat>
     </div>

@@ -96,12 +96,12 @@ describe('EventInvestigation', () => {
     mockOpenChat.mockClear();
   });
 
-  it('renders the empty state when there are no investigations', () => {
+  it('renders the empty state when there is no investigation', () => {
     renderInvestigation(mockEvent());
 
     expect(screen.getByText('Investigation')).toBeInTheDocument();
     expect(screen.getByTestId('nightshiftInvestigationEmptyState')).toHaveTextContent(
-      'No investigations yet.'
+      'No investigation yet.'
     );
     expect(
       screen.queryByTestId('nightshiftInvestigationShowDetailsButton')

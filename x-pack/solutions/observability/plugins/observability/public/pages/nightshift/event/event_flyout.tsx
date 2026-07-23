@@ -109,7 +109,7 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
       data-test-subj="nightshiftEventFlyout"
     >
       <EuiFlyoutHeader hasBorder>
-        <EuiTitle size="m">
+        <EuiTitle size="s">
           <h2>{event.title}</h2>
         </EuiTitle>
         <EuiSpacer size="s" />
@@ -155,7 +155,7 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
             </EuiFlexItem>
           )}
           <EuiFlexItem grow={false}>
-            <InvestigationStatusBadge status={event.status} />
+            <InvestigationStatusBadge event={event} />
           </EuiFlexItem>
         </EuiFlexGroup>
         <EuiSpacer size="s" />

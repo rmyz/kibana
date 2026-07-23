@@ -91,7 +91,7 @@ export function SignificantEventItem({
           responsive={false}
         >
           <EuiFlexItem grow={false}>
-            <InvestigationStatusBadge status={event.status} />
+            <InvestigationStatusBadge event={event} />
           </EuiFlexItem>
           <EuiFlexItem grow={false}>
             <EuiFlexGroup alignItems="center" gutterSize="xs" responsive={false}>

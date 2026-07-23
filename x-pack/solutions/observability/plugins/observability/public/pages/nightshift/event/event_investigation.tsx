@@ -81,12 +81,9 @@ export function EventInvestigation({
       {!investigation ? (
         <EuiText size="s" color="subdued" data-test-subj="nightshiftInvestigationEmptyState">
           <p>
-            {i18n.translate(
-              'xpack.observability.nightshift.flyout.investigationsEmptyDescription',
-              {
-                defaultMessage: 'No investigations yet.',
-              }
-            )}
+            {i18n.translate('xpack.observability.nightshift.flyout.investigationEmptyDescription', {
+              defaultMessage: 'No investigation yet.',
+            })}
           </p>
         </EuiText>
       ) : !investigation.workflow_execution_id ? (

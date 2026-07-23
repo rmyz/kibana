@@ -121,11 +121,29 @@ describe('EventFlyout', () => {
     expect(screen.getByText('Investigating')).toBeInTheDocument();
   });
 
-  it('does not render a status badge for resolved events', () => {
+  it('shows Investigating for resolved events without a completed investigation', () => {
     renderFlyout({ event: { ...mockEvent, status: 'closed' } });
 
     expect(screen.queryByText('Needs action')).not.toBeInTheDocument();
     expect(screen.queryByText('Resolved')).not.toBeInTheDocument();
+    expect(screen.getByText('Investigating')).toBeInTheDocument();
+  });
+
+  it('shows Investigated when the latest investigation has completed', () => {
+    renderFlyout({
+      event: {
+        ...mockEvent,
+        status: 'closed',
+        investigations: [
+          {
+            workflow_execution_id: 'exec-1',
+            started_at: '2026-07-10T12:00:00Z',
+            completed_at: '2026-07-10T12:05:00Z',
+          },
+        ],
+      },
+    });
+
     expect(screen.getByText('Investigated')).toBeInTheDocument();
   });
 
@@ -186,7 +204,7 @@ describe('EventFlyout', () => {
     renderFlyout();
 
     expect(screen.getByText('Investigation')).toBeInTheDocument();
-    expect(screen.getByText('No investigations yet.')).toBeInTheDocument();
+    expect(screen.getByText('No investigation yet.')).toBeInTheDocument();
   });
 
   it('renders the investigation summary when the event has investigations', () => {
@@ -205,7 +223,7 @@ describe('EventFlyout', () => {
 
     expect(screen.getByTestId('nightshiftInvestigationSummaryCard')).toBeInTheDocument();
     expect(screen.getByTestId('nightshiftInvestigationShowDetailsButton')).toBeInTheDocument();
-    expect(screen.queryByText('No investigations yet.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No investigation yet.')).not.toBeInTheDocument();
   });
 
   it('calls onClose when flyout is closed', () => {

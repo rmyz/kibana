@@ -14,8 +14,11 @@ import {
   useSvgAiGradient,
 } from '@kbn/shared-ux-ai-components';
 import { i18n } from '@kbn/i18n';
-import type { SignificantEventStatus } from '@kbn/significant-events-schema';
-import { getStatusLabel, isNeedsActionStatus } from '../event/significant_event_status';
+import type { SignificantEvent } from '@kbn/significant-events-schema';
+import {
+  getInvestigationStatusLabel,
+  isEventInvestigated,
+} from '../event/significant_event_status';
 import { nightshiftReducedMotionStyles } from '../common/nightshift_transition';
 
 // Staggered offsets so the dots pulse in sequence (typing-indicator effect).
@@ -31,6 +34,42 @@ const investigatingDotAnimation = keyframes`
     transform: scale(1);
   }
 `;
+
+function InvestigatingStatusDots({
+  testSubj = 'nightshiftInvestigatingStatusDots',
+}: {
+  testSubj?: string;
+}): React.ReactElement {
+  const { euiTheme } = useEuiTheme();
+
+  return (
+    <span
+      aria-hidden={true}
+      data-test-subj={testSubj}
+      css={css`
+        align-items: center;
+        display: inline-flex;
+        gap: ${euiTheme.size.xxs};
+      `}
+    >
+      {INVESTIGATING_DOT_DELAYS_MS.map((delay) => (
+        <span
+          key={delay}
+          css={css`
+            animation: ${investigatingDotAnimation} 1.4s ${euiTheme.animation.resistance} ${delay}ms
+              infinite;
+            background: ${euiTheme.colors.mediumShade};
+            border-radius: 50%;
+            height: ${euiTheme.size.xs};
+            width: ${euiTheme.size.xs};
+
+            ${nightshiftReducedMotionStyles}
+          `}
+        />
+      ))}
+    </span>
+  );
+}
 
 function InvestigatingStatus({ label }: { label: string }) {
   const { euiTheme } = useEuiTheme();
@@ -50,31 +89,7 @@ function InvestigatingStatus({ label }: { label: string }) {
         `}
       >
         {label}
-        <span
-          aria-hidden={true}
-          data-test-subj="nightshiftInvestigatingStatusDots"
-          css={css`
-            align-items: center;
-            display: inline-flex;
-            gap: ${euiTheme.size.xxs};
-          `}
-        >
-          {INVESTIGATING_DOT_DELAYS_MS.map((delay) => (
-            <span
-              key={delay}
-              css={css`
-                animation: ${investigatingDotAnimation} 1.4s ${euiTheme.animation.resistance}
-                  ${delay}ms infinite;
-                background: ${euiTheme.colors.mediumShade};
-                border-radius: 50%;
-                height: ${euiTheme.size.xs};
-                width: ${euiTheme.size.xs};
-
-                ${nightshiftReducedMotionStyles}
-              `}
-            />
-          ))}
-        </span>
+        <InvestigatingStatusDots />
       </span>
     </EuiBadge>
   );
@@ -287,21 +302,21 @@ function InvestigatedStatus({ label }: { label: string }) {
 }
 
 /**
- * Animated "Investigating" badge while the event needs action, AI-gradient
- * "Investigated" badge once resolved. Shared between the event list items and
- * the flyout header.
+ * Animated "Investigating" badge while the latest investigation is in progress,
+ * AI-gradient "Investigated" badge once it has completed. Shared between the
+ * event list items and the flyout header.
  */
 export function InvestigationStatusBadge({
-  status,
+  event,
 }: {
-  status: SignificantEventStatus;
+  event: Pick<SignificantEvent, 'investigations'>;
 }): React.ReactElement {
-  const label = getStatusLabel(status);
+  const label = getInvestigationStatusLabel(event);
 
-  return isNeedsActionStatus(status) ? (
-    <InvestigatingStatus label={label} />
-  ) : (
+  return isEventInvestigated(event) ? (
     <InvestigatedStatus label={label} />
+  ) : (
+    <InvestigatingStatus label={label} />
   );
 }
 
@@ -310,4 +325,5 @@ export {
   InvestigationCompleteCheckIcon,
   InvestigationCompleteStatus,
   InvestigationGradientLabel,
+  InvestigatingStatusDots,
 };

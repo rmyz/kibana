@@ -12,8 +12,10 @@ import {
   byCriticalityAndUpdatedAtDesc,
   getNeedsActionEvents,
   getResolvedEvents,
+  getInvestigationStatusLabel,
+  getLatestInvestigation,
   getStatusColor,
-  getStatusLabel,
+  isEventInvestigated,
   isNeedsActionStatus,
   isResolvedStatus,
 } from './significant_event_status';
@@ -107,10 +109,37 @@ describe('significant_event_status', () => {
     expect([...events].sort(byCriticalityAndUpdatedAtDesc)[0].event_id).toBe('critical');
   });
 
-  it('maps status to color and label', () => {
+  it('maps status to list dot color', () => {
     expect(getStatusColor('open')).toBe('danger');
     expect(getStatusColor('closed')).toBe('success');
-    expect(getStatusLabel('open')).toBe('Investigating');
-    expect(getStatusLabel('closed')).toBe('Investigated');
+  });
+
+  it('derives investigation badge label from investigations, not event status', () => {
+    const inProgress = mockEvent({
+      status: 'closed',
+      investigations: [
+        {
+          workflow_execution_id: 'exec-1',
+          started_at: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+    const completed = mockEvent({
+      status: 'open',
+      investigations: [
+        {
+          workflow_execution_id: 'exec-1',
+          started_at: '2026-01-01T00:00:00.000Z',
+          completed_at: '2026-01-01T00:05:00.000Z',
+        },
+      ],
+    });
+
+    expect(getInvestigationStatusLabel(mockEvent())).toBe('Investigating');
+    expect(getInvestigationStatusLabel(inProgress)).toBe('Investigating');
+    expect(getInvestigationStatusLabel(completed)).toBe('Investigated');
+    expect(isEventInvestigated(completed)).toBe(true);
+    expect(isEventInvestigated(inProgress)).toBe(false);
+    expect(getLatestInvestigation(completed)?.workflow_execution_id).toBe('exec-1');
   });
 });
