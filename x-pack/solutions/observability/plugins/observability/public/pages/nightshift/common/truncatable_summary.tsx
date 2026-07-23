@@ -21,6 +21,7 @@ export interface TruncatableSummaryProps {
   toggleTestSubj?: string;
   textSize?: 's' | 'xs';
   fontSize?: string;
+  bold?: boolean;
 }
 
 export function TruncatableSummary({
@@ -30,6 +31,7 @@ export function TruncatableSummary({
   toggleTestSubj,
   textSize = 's',
   fontSize,
+  bold = false,
 }: TruncatableSummaryProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const [expanded, setExpanded] = useState(false);
@@ -58,6 +60,7 @@ export function TruncatableSummary({
           text={displaySummary}
           textSize={fontSize ? undefined : textSize}
           fontSize={fontSize}
+          bold={bold}
         />
       </EuiText>
       {isSummaryLong && (

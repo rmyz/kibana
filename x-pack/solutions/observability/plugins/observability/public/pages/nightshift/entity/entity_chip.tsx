@@ -15,14 +15,17 @@ export interface EntityChipProps {
   label: string;
   onClick: () => void;
   testSubj?: string;
+  size?: 'default' | 'compact';
 }
 
 export function EntityChip({
   label,
   onClick,
   testSubj = 'nightshiftEntityChip',
+  size = 'default',
 }: EntityChipProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
+  const isCompact = size === 'compact';
 
   return (
     <button
@@ -37,13 +40,15 @@ export function EntityChip({
         align-items: center;
         background: ${euiTheme.colors.backgroundBasePlain};
         border: ${euiTheme.border.thin};
-        border-radius: ${euiTheme.size.l};
+        border-radius: ${isCompact ? euiTheme.size.base : euiTheme.size.l};
+        box-sizing: border-box;
         color: ${euiTheme.colors.textParagraph};
         cursor: pointer;
         display: inline-flex;
         font: inherit;
         gap: ${euiTheme.size.xs};
-        padding: ${euiTheme.size.s} ${euiTheme.size.m};
+        height: ${isCompact ? euiTheme.size.xl : undefined};
+        padding: ${isCompact ? `0 ${euiTheme.size.m}` : `${euiTheme.size.s} ${euiTheme.size.m}`};
         transition: ${nightshiftBackgroundTransition(euiTheme)};
 
         &:hover,

@@ -41,6 +41,7 @@ const SPARKLINE_SKELETON_WIDTH = 64;
 const SPARKLINE_SKELETON_HEIGHT = 32;
 /** Placeholder rows on first load before any lifecycle data exists. */
 const INITIAL_DETECTION_SKELETON_COUNT = 2;
+const MAX_VISIBLE_ENTITY_PILLS = 2;
 
 export interface DetectionsListProps {
   event: SignificantEvent;
@@ -85,6 +86,8 @@ function DetectionCard({
     }
     return detection.stream_name ? [detection.stream_name] : [];
   }, [detection, event, streamFeatures]);
+  const visibleEntityLabels = entityLabels.slice(0, MAX_VISIBLE_ENTITY_PILLS);
+  const hiddenEntityCount = Math.max(entityLabels.length - visibleEntityLabels.length, 0);
 
   const handleClick = () => {
     onClick?.(detection);
@@ -173,11 +176,24 @@ function DetectionCard({
                     <EuiBadge color="default">{changePointLabel}</EuiBadge>
                   </EuiFlexItem>
                 )}
-                {entityLabels.map((label) => (
+                {visibleEntityLabels.map((label) => (
                   <EuiFlexItem grow={false} key={`${detection.detection_id}-${label}`}>
                     <EuiBadge color="hollow">{label}</EuiBadge>
                   </EuiFlexItem>
                 ))}
+                {hiddenEntityCount > 0 && (
+                  <EuiFlexItem grow={false}>
+                    <EuiBadge color="hollow">
+                      {i18n.translate(
+                        'xpack.observability.nightshift.flyout.detectionEntityOverflow',
+                        {
+                          defaultMessage: '+{count}',
+                          values: { count: hiddenEntityCount },
+                        }
+                      )}
+                    </EuiBadge>
+                  </EuiFlexItem>
+                )}
               </EuiFlexGroup>
             </EuiFlexItem>
           </EuiFlexGroup>

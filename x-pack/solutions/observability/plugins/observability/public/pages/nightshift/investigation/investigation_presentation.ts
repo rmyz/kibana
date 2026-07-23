@@ -10,6 +10,7 @@ import { i18n } from '@kbn/i18n';
 import type { InvestigationHypothesis, InvestigationState } from '@kbn/significant-events-schema';
 import type { InvestigationStatus } from '@kbn/investigation-output';
 import { formatShortTime } from '../common/format_timestamp';
+import { getInvestigationProgressStatusLabel } from '../event/significant_event_status';
 
 export interface InvestigationRecommendation {
   title: string;
@@ -71,49 +72,20 @@ export const getInvestigationTimeLabel = ({
   });
 };
 
-export const getInvestigationStatusLabel = (
+export const isInvestigationInvestigated = (
   status: InvestigationStatus,
-  state?: InvestigationState
-): string => {
-  if (status === 'complete') {
-    return i18n.translate('xpack.observability.nightshift.investigation.statusComplete', {
-      defaultMessage: 'Complete',
-    });
-  }
+  completedAt?: number | string | null
+): boolean => status === 'complete' || completedAt != null;
 
-  if (status === 'running') {
-    const hasInvestigating = (state?.hypotheses ?? []).some(
-      (hypothesis) => hypothesis.status === 'investigating'
-    );
-    if (hasInvestigating) {
-      return i18n.translate(
-        'xpack.observability.nightshift.investigation.statusCheckingHypotheses',
-        {
-          defaultMessage: 'Checking hypotheses',
-        }
-      );
-    }
-    return i18n.translate('xpack.observability.nightshift.investigation.statusGatheringEvidence', {
-      defaultMessage: 'Gathering evidence',
-    });
-  }
+export const getInvestigationWorkflowStatusLabel = (
+  status: InvestigationStatus,
+  completedAt?: number | string | null
+): string => getInvestigationProgressStatusLabel(isInvestigationInvestigated(status, completedAt));
 
-  if (status === 'loading') {
-    return i18n.translate('xpack.observability.nightshift.investigation.statusLoading', {
-      defaultMessage: 'Loading investigation',
-    });
-  }
-
-  if (status === 'failed') {
-    return i18n.translate('xpack.observability.nightshift.investigation.statusFailed', {
-      defaultMessage: 'Investigation failed',
-    });
-  }
-
-  return i18n.translate('xpack.observability.nightshift.investigation.statusUnavailable', {
-    defaultMessage: 'Investigation unavailable',
+export const getInvestigationCompleteStatusLabel = (): string =>
+  i18n.translate('xpack.observability.nightshift.investigation.statusComplete', {
+    defaultMessage: 'Complete',
   });
-};
 
 export const getPrimaryHypothesis = (
   hypotheses: InvestigationHypothesis[] | undefined

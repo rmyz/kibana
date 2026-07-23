@@ -96,13 +96,15 @@ export const getLatestInvestigation = (
 export const isEventInvestigated = (event: Pick<SignificantEvent, 'investigations'>): boolean =>
   getLatestInvestigation(event)?.completed_at != null;
 
-export const getInvestigationStatusLabel = (
-  event: Pick<SignificantEvent, 'investigations'>
-): string =>
-  isEventInvestigated(event)
+export const getInvestigationProgressStatusLabel = (isInvestigated: boolean): string =>
+  isInvestigated
     ? i18n.translate('xpack.observability.nightshift.event.investigatedStatusLabel', {
         defaultMessage: 'Investigated',
       })
     : i18n.translate('xpack.observability.nightshift.event.investigatingStatusLabel', {
         defaultMessage: 'Investigating',
       });
+
+export const getInvestigationStatusLabel = (
+  event: Pick<SignificantEvent, 'investigations'>
+): string => getInvestigationProgressStatusLabel(isEventInvestigated(event));

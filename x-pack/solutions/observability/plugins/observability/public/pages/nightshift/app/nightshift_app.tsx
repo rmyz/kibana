@@ -38,9 +38,10 @@ import { SignificantEventList } from '../landing/significant_event_list';
 import { SignificantEventStatuses } from '../landing/significant_event_statuses';
 import { EventFlyout } from '../event/event_flyout';
 import { NightshiftHeader } from './nightshift_header';
+import { NIGHTSHIFT_EVENT_UUID_QUERY_PARAM } from '../common/nightshift_url_params';
 
 // Kept in the URL so a refresh or a shared link restores the open flyout.
-const SELECTED_EVENT_QUERY_PARAM = 'eventUuid';
+const SELECTED_EVENT_QUERY_PARAM = NIGHTSHIFT_EVENT_UUID_QUERY_PARAM;
 const BLAST_RADIUS_QUERY_PARAM = 'blastRadius';
 
 export function NightshiftApp(): React.ReactElement {

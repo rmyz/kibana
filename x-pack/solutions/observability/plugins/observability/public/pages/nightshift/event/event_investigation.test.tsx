@@ -127,6 +127,9 @@ describe('EventInvestigation', () => {
 
     fireEvent.click(screen.getByTestId('nightshiftInvestigationShowDetailsButton'));
     expect(screen.getByTestId('nightshiftInvestigationFlyout')).toBeInTheDocument();
+    expect(screen.getByTestId('nightshiftInvestigationFlyoutCompleteBadge')).toHaveTextContent(
+      'Complete'
+    );
     expect(screen.getByTestId('nightshiftInvestigationFlyoutConclusion')).toBeInTheDocument();
     expect(screen.getByTestId('nightshiftInvestigationFlyoutTab-recommendations')).toHaveAttribute(
       'aria-selected',
@@ -174,10 +177,100 @@ describe('EventInvestigation', () => {
       conversationId: undefined,
     });
 
-    expect(screen.getByText('Checking hypotheses')).toBeInTheDocument();
+    expect(screen.getByText('Investigating')).toBeInTheDocument();
     expect(screen.getByTestId('nightshiftInvestigationGoalPreview')).toHaveTextContent(
       'Determine whether the deploy caused the spike.'
     );
+    expect(
+      screen.queryByTestId('nightshiftInvestigationGoalPreviewToggle')
+    ).not.toBeInTheDocument();
+  });
+
+  it('truncates long in-progress goal text with Show more', () => {
+    const longGoal = `${'Determine whether the deploy caused the spike. '.repeat(12)}End.`;
+
+    renderInvestigation(mockEvent(), {
+      investigation: {
+        workflow_execution_id: 'exec-running',
+        started_at: '2026-07-10T12:00:00Z',
+      },
+      status: 'running',
+      state: {
+        summary: longGoal,
+        hypotheses: [
+          {
+            candidate: 'Checkout deploy regression',
+            confidence: 0.55,
+            status: 'investigating',
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByTestId('nightshiftInvestigationGoalPreviewToggle')).toHaveTextContent(
+      'Show more'
+    );
+    fireEvent.click(screen.getByTestId('nightshiftInvestigationGoalPreviewToggle'));
+    expect(screen.getByTestId('nightshiftInvestigationGoalPreviewToggle')).toHaveTextContent(
+      'Show less'
+    );
+    expect(screen.getByTestId('nightshiftInvestigationGoalPreview')).toHaveTextContent('End.');
+  });
+
+  it('truncates long completed conclusion text with Show more', () => {
+    const longConclusionBody = `${'Checkout deploy introduced a regression. '.repeat(12)}End.`;
+
+    renderInvestigation(mockEvent(), {
+      investigation: {
+        workflow_execution_id: 'exec-latest',
+        started_at: '2026-07-10T12:00:00Z',
+        completed_at: '2026-07-10T12:05:00Z',
+      },
+      state: {
+        ...completeState,
+        conclusion: `# Conclusion\n${longConclusionBody}`,
+      },
+    });
+
+    expect(screen.getByTestId('nightshiftInvestigationConclusionPreviewToggle')).toHaveTextContent(
+      'Show more'
+    );
+    fireEvent.click(screen.getByTestId('nightshiftInvestigationConclusionPreviewToggle'));
+    expect(screen.getByTestId('nightshiftInvestigationConclusionPreviewToggle')).toHaveTextContent(
+      'Show less'
+    );
+    expect(screen.getByTestId('nightshiftInvestigationConclusionPreview')).toHaveTextContent(
+      'End.'
+    );
+  });
+
+  it('truncates long try next recommendation description with Show more', () => {
+    const longRecommendationDescription = `${'Monitor error rate after rollback. '.repeat(15)}End.`;
+
+    renderInvestigation(mockEvent(), {
+      investigation: {
+        workflow_execution_id: 'exec-latest',
+        started_at: '2026-07-10T12:00:00Z',
+        completed_at: '2026-07-10T12:05:00Z',
+      },
+      state: {
+        ...completeState,
+        conclusion: `# Conclusion
+Checkout deploy introduced a regression.
+
+## Next Steps
+- Roll back checkout deployment · ${longRecommendationDescription}`,
+      },
+    });
+
+    expect(screen.getByTestId('nightshiftInvestigationTryNextPreviewToggle')).toHaveTextContent(
+      'Show more'
+    );
+    fireEvent.click(screen.getByTestId('nightshiftInvestigationTryNextPreviewToggle'));
+    expect(screen.getByTestId('nightshiftInvestigationTryNextPreviewToggle')).toHaveTextContent(
+      'Show less'
+    );
+    expect(screen.getByTestId('nightshiftInvestigationTryNextPreview')).toHaveTextContent('End.');
   });
 
   it('shows a warning when the investigation lacks workflow details', () => {

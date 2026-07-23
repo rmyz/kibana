@@ -13,7 +13,6 @@ import {
   EuiFlexGroup,
   EuiFlexItem,
   EuiHorizontalRule,
-  EuiIcon,
   EuiPanel,
   EuiSpacer,
   EuiText,
@@ -23,16 +22,14 @@ import {
 import type { InvestigationStatus } from '@kbn/investigation-output';
 import type { InvestigationState } from '@kbn/significant-events-schema';
 import { i18n } from '@kbn/i18n';
-import {
-  buildBlindSpotChatOptions,
-  buildRecommendationChatOptions,
-} from './open_investigation_item_in_chat';
+import { buildRecommendationChatOptions } from './open_investigation_item_in_chat';
 import { useKibana } from '../../../utils/kibana_react';
 import { InvestigationItemChatButton } from './investigation_item_chat_button';
+import { BlindSpotsTable } from './blind_spots_table';
 import { InvestigationCompleteStatus, InvestigatingStatusDots } from './investigation_status_badge';
 import { InvestigationFormattedText } from './investigation_formatted_text';
+import { TruncatableSummary } from '../common/truncatable_summary';
 import {
-  nightshiftBackgroundTransition,
   nightshiftOpacityTransition,
   nightshiftReducedMotionStyles,
 } from '../common/nightshift_transition';
@@ -40,24 +37,19 @@ import {
   getConclusionBody,
   getInvestigationGoalText,
   getInvestigationHeadline,
-  getInvestigationStatusLabel,
+  getInvestigationWorkflowStatusLabel,
   getInvestigationTimeLabel,
-  formatBlindSpotMarkdown,
+  isInvestigationInvestigated,
   getPrimaryRecommendation,
   mapBlindSpots,
-  type BlindSpotItem,
   type InvestigationRecommendation,
 } from './investigation_presentation';
 
 const INLINE_BLIND_SPOT_LIMIT = 4;
-const summaryRowActionClassName = 'nightshiftInvestigationSummaryRowAction';
+const tryNextRowActionClassName = 'nightshiftInvestigationTryNextRowAction';
 
-const blindSpotChatTooltip = i18n.translate(
-  'xpack.observability.nightshift.investigation.blindSpotChatTooltip',
-  {
-    defaultMessage: 'Ask agent about this blind spot',
-  }
-);
+const createTryNextFadeOverlayBackground = (backgroundColor: string): string =>
+  `linear-gradient(90deg, transparent 0%, ${backgroundColor} 40%, ${backgroundColor} 100%)`;
 
 const recommendationChatTooltip = i18n.translate(
   'xpack.observability.nightshift.investigation.recommendationChatTooltip',
@@ -68,18 +60,17 @@ const recommendationChatTooltip = i18n.translate(
 
 function InvestigationStatusRow({
   status,
-  state,
   startedAt,
   endedAt,
   isRunning,
 }: {
   status: InvestigationStatus;
-  state?: InvestigationState;
   startedAt: string;
   endedAt?: number | string;
   isRunning: boolean;
 }): React.ReactElement {
-  const statusLabel = getInvestigationStatusLabel(status, state);
+  const isInvestigated = isInvestigationInvestigated(status, endedAt);
+  const statusLabel = getInvestigationWorkflowStatusLabel(status, endedAt);
   const timeLabel = getInvestigationTimeLabel({
     startedAt,
     endedAt,
@@ -89,18 +80,7 @@ function InvestigationStatusRow({
   return (
     <EuiFlexGroup alignItems="center" justifyContent="spaceBetween" responsive={false}>
       <EuiFlexItem grow={false}>
-        {status === 'running' || status === 'loading' ? (
-          <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
-            <EuiFlexItem grow={false}>
-              <InvestigatingStatusDots testSubj="nightshiftInvestigationStatusSpinner" />
-            </EuiFlexItem>
-            <EuiFlexItem grow={false}>
-              <EuiTitle size="xxs">
-                <h4>{statusLabel}</h4>
-              </EuiTitle>
-            </EuiFlexItem>
-          </EuiFlexGroup>
-        ) : status === 'complete' ? (
+        {isInvestigated ? (
           <EuiTitle size="xxs">
             <h4>
               <InvestigationCompleteStatus
@@ -112,11 +92,7 @@ function InvestigationStatusRow({
         ) : (
           <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
             <EuiFlexItem grow={false}>
-              <EuiIcon
-                type="warning"
-                color="warning"
-                data-test-subj="nightshiftInvestigationStatusIcon"
-              />
+              <InvestigatingStatusDots testSubj="nightshiftInvestigationStatusSpinner" />
             </EuiFlexItem>
             <EuiFlexItem grow={false}>
               <EuiTitle size="xxs">
@@ -132,85 +108,6 @@ function InvestigationStatusRow({
         </EuiText>
       </EuiFlexItem>
     </EuiFlexGroup>
-  );
-}
-
-function BlindSpotsList({ items }: { items: BlindSpotItem[] }): React.ReactElement {
-  const { euiTheme } = useEuiTheme();
-  const { agentBuilder } = useKibana().services;
-
-  const openBlindSpotInChat = useCallback(
-    (blindSpot: BlindSpotItem, index: number) => {
-      agentBuilder?.openChat(
-        buildBlindSpotChatOptions(blindSpot, `nightshift-blind-spot-${index}`)
-      );
-    },
-    [agentBuilder]
-  );
-
-  return (
-    <EuiPanel hasBorder paddingSize="m" data-test-subj="nightshiftInvestigationBlindSpotsPanel">
-      <EuiTitle size="xxs">
-        <h4>
-          {i18n.translate('xpack.observability.nightshift.investigation.blindSpotsTitle', {
-            defaultMessage: 'Blind spots',
-          })}
-        </h4>
-      </EuiTitle>
-      <EuiSpacer size="m" />
-      <EuiFlexGroup direction="column" gutterSize="s" responsive={false}>
-        {items.map((item, index) => (
-          <EuiFlexItem key={`${item.title}-${index}`} grow={false}>
-            <EuiPanel
-              hasBorder
-              paddingSize="m"
-              data-test-subj={`nightshiftInvestigationBlindSpotItem-${index}`}
-              css={css`
-                background: ${euiTheme.colors.backgroundBasePlain};
-                transition: ${nightshiftBackgroundTransition(euiTheme)};
-
-                &:hover {
-                  background: ${euiTheme.colors.backgroundBaseSubdued};
-                }
-
-                &:hover
-                  .${summaryRowActionClassName},
-                  &:focus-within
-                  .${summaryRowActionClassName} {
-                  opacity: 1;
-                }
-              `}
-            >
-              <EuiFlexGroup alignItems="center" justifyContent="spaceBetween" responsive={false}>
-                <EuiFlexItem>
-                  <InvestigationFormattedText text={formatBlindSpotMarkdown(item)} />
-                </EuiFlexItem>
-                <EuiFlexItem
-                  grow={false}
-                  className={summaryRowActionClassName}
-                  css={css`
-                    opacity: 0;
-                    transition: ${nightshiftOpacityTransition(euiTheme)};
-
-                    @media (prefers-reduced-motion: reduce) {
-                      opacity: 1;
-                    }
-
-                    ${nightshiftReducedMotionStyles}
-                  `}
-                >
-                  <InvestigationItemChatButton
-                    tooltip={blindSpotChatTooltip}
-                    testSubj={`nightshiftInvestigationBlindSpotChatButton-${index}`}
-                    onClick={() => openBlindSpotInChat(item, index)}
-                  />
-                </EuiFlexItem>
-              </EuiFlexGroup>
-            </EuiPanel>
-          </EuiFlexItem>
-        ))}
-      </EuiFlexGroup>
-    </EuiPanel>
   );
 }
 
@@ -258,50 +155,62 @@ function TryNextPanel({
       <EuiHorizontalRule margin="s" />
       <div
         css={css`
-          &:hover .${summaryRowActionClassName}, &:focus-within .${summaryRowActionClassName} {
+          position: relative;
+          width: 100%;
+
+          &:hover .${tryNextRowActionClassName}, &:focus-within .${tryNextRowActionClassName} {
             opacity: 1;
+            pointer-events: auto;
           }
         `}
       >
-        <EuiFlexGroup alignItems="flexStart" justifyContent="spaceBetween" responsive={false}>
-          <EuiFlexItem>
-            <InvestigationFormattedText text={recommendation.title} bold />
-            {recommendation.description && (
-              <>
-                <EuiSpacer size="xs" />
-                <InvestigationFormattedText text={recommendation.description} />
-              </>
-            )}
-            {recommendation.code && (
-              <>
-                <EuiSpacer size="s" />
-                <EuiCodeBlock language="shell" isCopyable fontSize="s">
-                  {recommendation.code}
-                </EuiCodeBlock>
-              </>
-            )}
-          </EuiFlexItem>
-          <EuiFlexItem
-            grow={false}
-            className={summaryRowActionClassName}
-            css={css`
-              opacity: 0;
-              transition: ${nightshiftOpacityTransition(euiTheme)};
-
-              @media (prefers-reduced-motion: reduce) {
-                opacity: 1;
-              }
-
-              ${nightshiftReducedMotionStyles}
-            `}
-          >
-            <InvestigationItemChatButton
-              tooltip={recommendationChatTooltip}
-              testSubj="nightshiftInvestigationTryNextChatButton"
-              onClick={openRecommendationInChat}
+        <InvestigationFormattedText text={recommendation.title} bold />
+        {recommendation.description && (
+          <>
+            <EuiSpacer size="xs" />
+            <TruncatableSummary
+              summary={recommendation.description}
+              testSubj="nightshiftInvestigationTryNextPreview"
+              toggleTestSubj="nightshiftInvestigationTryNextPreviewToggle"
             />
-          </EuiFlexItem>
-        </EuiFlexGroup>
+          </>
+        )}
+        {recommendation.code && (
+          <>
+            <EuiSpacer size="s" />
+            <EuiCodeBlock language="shell" isCopyable fontSize="s">
+              {recommendation.code}
+            </EuiCodeBlock>
+          </>
+        )}
+        <div
+          className={tryNextRowActionClassName}
+          css={css`
+            align-items: flex-start;
+            background: ${createTryNextFadeOverlayBackground(euiTheme.colors.backgroundBasePlain)};
+            display: flex;
+            opacity: 0;
+            padding-left: ${euiTheme.size.xl};
+            pointer-events: none;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: ${nightshiftOpacityTransition(euiTheme)};
+
+            @media (prefers-reduced-motion: reduce) {
+              opacity: 1;
+              pointer-events: auto;
+            }
+
+            ${nightshiftReducedMotionStyles}
+          `}
+        >
+          <InvestigationItemChatButton
+            tooltip={recommendationChatTooltip}
+            testSubj="nightshiftInvestigationTryNextChatButton"
+            onClick={openRecommendationInChat}
+          />
+        </div>
       </div>
     </EuiPanel>
   );
@@ -347,7 +256,6 @@ export function InvestigationSummaryCard({
       >
         <InvestigationStatusRow
           status={status}
-          state={state}
           startedAt={startedAt}
           endedAt={completedAt}
           isRunning={isRunning}
@@ -363,18 +271,22 @@ export function InvestigationSummaryCard({
             {status === 'complete' && conclusionBody && (
               <>
                 <EuiSpacer size="s" />
-                <div data-test-subj="nightshiftInvestigationConclusionPreview">
-                  <InvestigationFormattedText text={conclusionBody} />
-                </div>
+                <TruncatableSummary
+                  summary={conclusionBody}
+                  testSubj="nightshiftInvestigationConclusionPreview"
+                  toggleTestSubj="nightshiftInvestigationConclusionPreviewToggle"
+                />
               </>
             )}
 
             {isRunning && goalText && (
               <>
                 <EuiSpacer size="s" />
-                <div data-test-subj="nightshiftInvestigationGoalPreview">
-                  <InvestigationFormattedText text={goalText} />
-                </div>
+                <TruncatableSummary
+                  summary={goalText}
+                  testSubj="nightshiftInvestigationGoalPreview"
+                  toggleTestSubj="nightshiftInvestigationGoalPreviewToggle"
+                />
               </>
             )}
 
@@ -403,7 +315,11 @@ export function InvestigationSummaryCard({
       {status === 'complete' && blindSpots.length > 0 && (
         <>
           <EuiSpacer size="s" />
-          <BlindSpotsList items={blindSpots} />
+          <BlindSpotsTable
+            items={blindSpots}
+            showTitle
+            testSubj="nightshiftInvestigationBlindSpotsPanel"
+          />
         </>
       )}
     </>

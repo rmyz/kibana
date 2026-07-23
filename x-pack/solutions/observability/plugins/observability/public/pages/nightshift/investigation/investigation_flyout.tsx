@@ -42,11 +42,14 @@ import { AiButton } from '@kbn/shared-ux-ai-components';
 import { useKibana } from '../../../utils/kibana_react';
 import { buildInvestigationConversationChatOptions } from '../chat/open_significant_event_in_chat';
 import {
-  buildBlindSpotChatOptions,
   buildHypothesisChatOptions,
   buildRecommendationChatOptions,
 } from './open_investigation_item_in_chat';
-import { InvestigationFormattedText } from './investigation_formatted_text';
+import { BlindSpotsTable } from './blind_spots_table';
+import {
+  InvestigationFormattedText,
+  NIGHTSHIFT_INLINE_CODE_FONT_SIZE,
+} from './investigation_formatted_text';
 import { TruncatableSummary } from '../common/truncatable_summary';
 import { FlyoutSectionTitle } from '../common/flyout_section_title';
 import {
@@ -56,20 +59,21 @@ import {
   InvestigatingStatusDots,
 } from './investigation_status_badge';
 import { InvestigationItemChatButton } from './investigation_item_chat_button';
+import { InvestigationRowHoverAction } from './investigation_row_hover_action';
 import {
   nightshiftBackgroundTransition,
-  nightshiftOpacityTransition,
   nightshiftReducedMotionStyles,
   nightshiftTransformTransition,
 } from '../common/nightshift_transition';
 import {
-  formatBlindSpotMarkdown,
   getConclusionBody,
   getHypothesisStatusLabel,
   getInvestigationGoalText,
   getInvestigationHeadline,
-  getInvestigationStatusLabel,
+  getInvestigationCompleteStatusLabel,
+  getInvestigationWorkflowStatusLabel,
   getInvestigationTimeLabel,
+  isInvestigationInvestigated,
   mapBlindSpots,
   parseInvestigationRecommendations,
   sortInvestigationHypotheses,
@@ -79,13 +83,6 @@ import {
 export type InvestigationFlyoutTabId = 'recommendations' | 'blindSpots' | 'hypotheses';
 
 type CompletedTabId = InvestigationFlyoutTabId;
-
-const blindSpotChatTooltip = i18n.translate(
-  'xpack.observability.nightshift.investigation.blindSpotChatTooltip',
-  {
-    defaultMessage: 'Ask agent about this blind spot',
-  }
-);
 
 const recommendationChatTooltip = i18n.translate(
   'xpack.observability.nightshift.investigation.recommendationChatTooltip',
@@ -108,13 +105,32 @@ const hypothesisConfirmedAriaLabel = i18n.translate(
   }
 );
 
-const investigationFlyoutRowActionClassName = 'nightshiftInvestigationFlyoutRowAction';
 const INVESTIGATION_FLYOUT_BODY_FONT_SIZE = '14px';
 
 const flyoutBodyTextCss = css`
   font-size: ${INVESTIGATION_FLYOUT_BODY_FONT_SIZE};
   line-height: 1.5;
 `;
+
+const flyoutCodeBlockCss = css`
+  font-size: ${NIGHTSHIFT_INLINE_CODE_FONT_SIZE};
+  line-height: 1.5;
+`;
+
+/** ~2 lines of 14px body text in the investigation flyout recommendations list. */
+const RECOMMENDATION_TITLE_PREVIEW_MAX_LENGTH = 100;
+
+const truncateTextPreview = (
+  text: string,
+  maxLength: number
+): { preview: string; isTruncated: boolean } => {
+  const characters = Array.from(text);
+  if (characters.length <= maxLength) {
+    return { preview: text, isTruncated: false };
+  }
+
+  return { preview: `${characters.slice(0, maxLength).join('')}...`, isTruncated: true };
+};
 
 function FlyoutFormattedText(
   props: Omit<React.ComponentProps<typeof InvestigationFormattedText>, 'textSize' | 'fontSize'>
@@ -140,13 +156,6 @@ function InvestigationFlyoutListPanel({
         &:hover {
           background: ${euiTheme.colors.backgroundBaseSubdued};
         }
-
-        &:hover
-          .${investigationFlyoutRowActionClassName},
-          &:focus-within
-          .${investigationFlyoutRowActionClassName} {
-          opacity: 1;
-        }
       `}
     >
       {children}
@@ -159,18 +168,24 @@ function InvestigationFlyoutRow({
   expandableContent,
   action,
   showExpandedSeparator = false,
+  showToggle,
+  isToggleDisabled = false,
   children,
 }: {
   testSubj?: string;
   expandableContent?: React.ReactNode;
   action?: React.ReactNode;
   showExpandedSeparator?: boolean;
+  showToggle?: boolean;
+  isToggleDisabled?: boolean;
   children: React.ReactNode;
 }): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const [isOpen, setIsOpen] = useState(false);
   const contentId = useGeneratedHtmlId({ prefix: 'nightshiftInvestigationFlyoutRow' });
   const isExpandable = expandableContent != null;
+  const shouldShowToggle = showToggle ?? isExpandable;
+  const canToggle = isExpandable && !isToggleDisabled;
   const expandRowLabel = isOpen
     ? i18n.translate('xpack.observability.nightshift.investigation.collapseRow', {
         defaultMessage: 'Collapse row',
@@ -187,17 +202,22 @@ function InvestigationFlyoutRow({
       `}
     >
       <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
-        {isExpandable && (
+        {shouldShowToggle && (
           <EuiFlexItem grow={false}>
-            <EuiToolTip content={expandRowLabel} disableScreenReaderOutput>
+            <EuiToolTip content={canToggle ? expandRowLabel : undefined} disableScreenReaderOutput>
               <EuiButtonIcon
                 iconType="arrowRight"
                 aria-label={expandRowLabel}
-                aria-expanded={isOpen}
-                aria-controls={contentId}
+                aria-expanded={canToggle ? isOpen : false}
+                aria-controls={canToggle ? contentId : undefined}
                 color="text"
+                disabled={!canToggle}
                 data-test-subj={testSubj ? `${testSubj}Toggle` : undefined}
-                onClick={() => setIsOpen((open) => !open)}
+                onClick={() => {
+                  if (canToggle) {
+                    setIsOpen((open) => !open);
+                  }
+                }}
                 css={css`
                   transform: rotate(${isOpen ? '90deg' : '0deg'});
                   transition: ${nightshiftTransformTransition(euiTheme)};
@@ -207,27 +227,11 @@ function InvestigationFlyoutRow({
             </EuiToolTip>
           </EuiFlexItem>
         )}
-        <EuiFlexItem grow>{children}</EuiFlexItem>
-        {action && (
-          <EuiFlexItem
-            grow={false}
-            className={investigationFlyoutRowActionClassName}
-            css={css`
-              opacity: 0;
-              transition: ${nightshiftOpacityTransition(euiTheme)};
-
-              @media (prefers-reduced-motion: reduce) {
-                opacity: 1;
-              }
-
-              ${nightshiftReducedMotionStyles}
-            `}
-          >
-            {action}
-          </EuiFlexItem>
-        )}
+        <EuiFlexItem grow>
+          <InvestigationRowHoverAction action={action}>{children}</InvestigationRowHoverAction>
+        </EuiFlexItem>
       </EuiFlexGroup>
-      {isExpandable && isOpen && (
+      {isExpandable && canToggle && isOpen && (
         <>
           <EuiSpacer size="s" />
           {showExpandedSeparator && <EuiHorizontalRule margin="none" />}
@@ -246,41 +250,41 @@ function InvestigationFlyoutRow({
   );
 }
 
-function InvestigationFlyoutBadge({ status }: { status: InvestigationStatus }): React.ReactElement {
+function InvestigationFlyoutBadge({
+  status,
+  completedAt,
+}: {
+  status: InvestigationStatus;
+  completedAt?: string;
+}): React.ReactElement {
   const { euiTheme } = useEuiTheme();
+  const isInvestigated = isInvestigationInvestigated(status, completedAt);
+  const statusLabel = isInvestigated
+    ? getInvestigationCompleteStatusLabel()
+    : getInvestigationWorkflowStatusLabel(status, completedAt);
 
-  if (status === 'complete') {
+  if (isInvestigated) {
     return (
       <GradientOutlinedStatusBadge
-        label={getInvestigationStatusLabel(status)}
+        label={statusLabel}
         testSubj="nightshiftInvestigationFlyoutCompleteBadge"
       />
     );
   }
 
-  if (status === 'running' || status === 'loading') {
-    return (
-      <EuiBadge color="hollow" data-test-subj="nightshiftInvestigationFlyoutProgressBadge">
-        <span
-          css={css`
-            align-items: center;
-            color: ${euiTheme.colors.textSubdued};
-            display: inline-flex;
-            gap: calc(${euiTheme.size.xs} + ${euiTheme.size.xxs});
-          `}
-        >
-          {i18n.translate('xpack.observability.nightshift.investigation.flyoutInProgress', {
-            defaultMessage: 'In progress',
-          })}
-          <InvestigatingStatusDots testSubj="nightshiftInvestigationFlyoutProgressDots" />
-        </span>
-      </EuiBadge>
-    );
-  }
-
   return (
     <EuiBadge color="hollow" data-test-subj="nightshiftInvestigationFlyoutProgressBadge">
-      {getInvestigationStatusLabel(status)}
+      <span
+        css={css`
+          align-items: center;
+          color: ${euiTheme.colors.textSubdued};
+          display: inline-flex;
+          gap: calc(${euiTheme.size.xs} + ${euiTheme.size.xxs});
+        `}
+      >
+        {statusLabel}
+        <InvestigatingStatusDots testSubj="nightshiftInvestigationFlyoutProgressDots" />
+      </span>
     </EuiBadge>
   );
 }
@@ -294,28 +298,46 @@ function RecommendationRow({
   index: number;
   onOpenInChat: () => void;
 }): React.ReactElement {
-  const hasExpandableContent = Boolean(recommendation.description || recommendation.code);
+  const { preview: titlePreview, isTruncated: isTitleTruncated } = useMemo(
+    () => truncateTextPreview(recommendation.title, RECOMMENDATION_TITLE_PREVIEW_MAX_LENGTH),
+    [recommendation.title]
+  );
+  const hasDetails = Boolean(recommendation.description || recommendation.code);
+  const canExpand = isTitleTruncated || hasDetails;
+
+  const expandableContent = useMemo(() => {
+    if (!canExpand) {
+      return undefined;
+    }
+
+    return (
+      <>
+        <FlyoutFormattedText text={recommendation.title} />
+        {recommendation.description && (
+          <>
+            <EuiSpacer size="s" />
+            <FlyoutFormattedText text={recommendation.description} />
+          </>
+        )}
+        {recommendation.code && (
+          <>
+            <EuiSpacer size="s" />
+            <EuiCodeBlock language="shell" isCopyable fontSize="s" css={flyoutCodeBlockCss}>
+              {recommendation.code}
+            </EuiCodeBlock>
+          </>
+        )}
+      </>
+    );
+  }, [canExpand, recommendation.code, recommendation.description, recommendation.title]);
 
   return (
     <InvestigationFlyoutRow
       testSubj={`nightshiftInvestigationFlyoutRecommendation-${index}`}
-      expandableContent={
-        hasExpandableContent ? (
-          <>
-            {recommendation.description && (
-              <FlyoutFormattedText text={recommendation.description} />
-            )}
-            {recommendation.code && (
-              <>
-                {recommendation.description && <EuiSpacer size="s" />}
-                <EuiCodeBlock language="shell" isCopyable fontSize="s">
-                  {recommendation.code}
-                </EuiCodeBlock>
-              </>
-            )}
-          </>
-        ) : undefined
-      }
+      showToggle
+      isToggleDisabled={!canExpand}
+      showExpandedSeparator
+      expandableContent={expandableContent}
       action={
         <InvestigationItemChatButton
           tooltip={recommendationChatTooltip}
@@ -326,7 +348,7 @@ function RecommendationRow({
     >
       <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
         <EuiFlexItem grow>
-          <FlyoutFormattedText text={recommendation.title} bold />
+          <FlyoutFormattedText text={titlePreview} bold />
         </EuiFlexItem>
         {recommendation.confidence != null && (
           <EuiFlexItem grow={false}>
@@ -446,25 +468,25 @@ function HypothesisRow({
         />
       }
     >
-      <EuiFlexGroup direction="column" gutterSize="xs" responsive={false}>
-        <EuiFlexItem grow={false}>
-          <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
-            <EuiFlexItem grow>
+      <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
+        <EuiFlexItem grow>
+          <EuiFlexGroup direction="column" gutterSize="xs" responsive={false}>
+            <EuiFlexItem grow={false}>
               <FlyoutFormattedText text={candidate} bold />
             </EuiFlexItem>
             <EuiFlexItem grow={false}>
-              <EuiBadge color={isConfidenceWinner ? 'success' : 'default'}>
-                <FormattedMessage
-                  id="xpack.observability.nightshift.investigation.hypothesisConfidence"
-                  defaultMessage="{confidence, number, percent}"
-                  values={{ confidence }}
-                />
-              </EuiBadge>
+              <HypothesisStatusRow status={status} />
             </EuiFlexItem>
           </EuiFlexGroup>
         </EuiFlexItem>
         <EuiFlexItem grow={false}>
-          <HypothesisStatusRow status={status} />
+          <EuiBadge color={isConfidenceWinner ? 'success' : 'default'}>
+            <FormattedMessage
+              id="xpack.observability.nightshift.investigation.hypothesisConfidence"
+              defaultMessage="{confidence, number, percent}"
+              values={{ confidence }}
+            />
+          </EuiBadge>
         </EuiFlexItem>
       </EuiFlexGroup>
     </InvestigationFlyoutRow>
@@ -531,15 +553,6 @@ export function InvestigationFlyout({
     }
   );
 
-  const openBlindSpotInChat = useCallback(
-    (blindSpot: { title: string; description: string }, index: number) => {
-      agentBuilder?.openChat(
-        buildBlindSpotChatOptions(blindSpot, `nightshift-flyout-blind-spot-${index}`)
-      );
-    },
-    [agentBuilder]
-  );
-
   const openRecommendationInChat = useCallback(
     (recommendation: InvestigationRecommendation, index: number) => {
       agentBuilder?.openChat(
@@ -604,7 +617,7 @@ export function InvestigationFlyout({
               defaultMessage: 'Investigation',
             })}
           </EuiBadge>
-          <InvestigationFlyoutBadge status={status} />
+          <InvestigationFlyoutBadge status={status} completedAt={investigation.completed_at} />
         </EuiBadgeGroup>
         <EuiSpacer size="s" />
         <EuiText size="xs" color="subdued" data-test-subj="nightshiftInvestigationFlyoutTimeLabel">
@@ -725,44 +738,24 @@ export function InvestigationFlyout({
                 )}
               </EuiFlexGroup>
             )}
-            {selectedTab === 'blindSpots' && (
-              <EuiFlexGroup
-                direction="column"
-                gutterSize="s"
-                data-test-subj="nightshiftInvestigationFlyoutBlindSpots"
-              >
-                {blindSpots.map((item, index) => (
-                  <EuiFlexItem key={`${item.title}-${index}`} grow={false}>
-                    <InvestigationFlyoutListPanel>
-                      <InvestigationFlyoutRow
-                        testSubj={`nightshiftInvestigationFlyoutBlindSpot-${index}`}
-                        action={
-                          <InvestigationItemChatButton
-                            tooltip={blindSpotChatTooltip}
-                            testSubj={`nightshiftInvestigationFlyoutBlindSpotChatButton-${index}`}
-                            onClick={() => openBlindSpotInChat(item, index)}
-                          />
-                        }
-                      >
-                        <FlyoutFormattedText text={formatBlindSpotMarkdown(item)} />
-                      </InvestigationFlyoutRow>
-                    </InvestigationFlyoutListPanel>
-                  </EuiFlexItem>
-                ))}
-                {blindSpots.length === 0 && (
-                  <EuiFlexItem grow={false}>
-                    <EuiText color="subdued" css={flyoutBodyTextCss}>
-                      {i18n.translate(
-                        'xpack.observability.nightshift.investigation.flyout.emptyBlindSpots',
-                        {
-                          defaultMessage: 'No blind spots were identified for this investigation.',
-                        }
-                      )}
-                    </EuiText>
-                  </EuiFlexItem>
-                )}
-              </EuiFlexGroup>
-            )}
+            {selectedTab === 'blindSpots' &&
+              (blindSpots.length > 0 ? (
+                <BlindSpotsTable
+                  items={blindSpots}
+                  testSubj="nightshiftInvestigationFlyoutBlindSpots"
+                  bodyFontSize={INVESTIGATION_FLYOUT_BODY_FONT_SIZE}
+                  chatAttachmentIdPrefix="nightshift-flyout-blind-spot"
+                />
+              ) : (
+                <EuiText color="subdued" css={flyoutBodyTextCss}>
+                  {i18n.translate(
+                    'xpack.observability.nightshift.investigation.flyout.emptyBlindSpots',
+                    {
+                      defaultMessage: 'No blind spots were identified for this investigation.',
+                    }
+                  )}
+                </EuiText>
+              ))}
             {selectedTab === 'hypotheses' && (
               <EuiFlexGroup
                 direction="column"

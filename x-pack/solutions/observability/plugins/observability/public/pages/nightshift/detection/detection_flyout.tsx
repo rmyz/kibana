@@ -257,6 +257,7 @@ export function DetectionFlyout({
                           label={entity.label}
                           onClick={() => setSelectedEntity(entity)}
                           testSubj="nightshiftDetectionFlyoutEntityChip"
+                          size="compact"
                         />
                       </EuiFlexItem>
                     ))}

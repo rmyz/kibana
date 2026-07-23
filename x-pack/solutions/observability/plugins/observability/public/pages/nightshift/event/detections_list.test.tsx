@@ -199,6 +199,76 @@ describe('DetectionsList', () => {
     expect(screen.queryByText('logs.web-frontend')).not.toBeInTheDocument();
   });
 
+  it('shows at most two entity pills plus an overflow pill', () => {
+    setLifecycle({ detections: [mockDetection()] });
+    mockUseFetchStreamFeaturesByStream.mockReturnValue(
+      new Map([
+        [
+          'logs.web-frontend',
+          [
+            {
+              uuid: 'feat-entity-one',
+              id: 'entity-one',
+              stream_name: 'logs.web-frontend',
+              type: 'entity',
+              title: 'entity-one',
+              description: '',
+              properties: { name: 'entity-one' },
+              confidence: 90,
+            },
+            {
+              uuid: 'feat-entity-two',
+              id: 'entity-two',
+              stream_name: 'logs.web-frontend',
+              type: 'entity',
+              title: 'entity-two',
+              description: '',
+              properties: { name: 'entity-two' },
+              confidence: 90,
+            },
+            {
+              uuid: 'feat-entity-three',
+              id: 'entity-three',
+              stream_name: 'logs.web-frontend',
+              type: 'entity',
+              title: 'entity-three',
+              description: '',
+              properties: { name: 'entity-three' },
+              confidence: 90,
+            },
+          ],
+        ],
+      ])
+    );
+
+    renderList({
+      event: mockEvent({
+        causal_features: [
+          {
+            feature_id: 'entity-one',
+            name: 'entity-one',
+            stream_name: 'logs.web-frontend',
+          },
+          {
+            feature_id: 'entity-two',
+            name: 'entity-two',
+            stream_name: 'logs.web-frontend',
+          },
+          {
+            feature_id: 'entity-three',
+            name: 'entity-three',
+            stream_name: 'logs.web-frontend',
+          },
+        ],
+      }),
+    });
+
+    expect(screen.getByText('entity-one')).toBeInTheDocument();
+    expect(screen.getByText('entity-two')).toBeInTheDocument();
+    expect(screen.queryByText('entity-three')).not.toBeInTheDocument();
+    expect(screen.getByText('+1')).toBeInTheDocument();
+  });
+
   it('sorts detections with the most recent first', () => {
     setLifecycle({
       detections: [

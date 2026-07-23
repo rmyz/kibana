@@ -39,7 +39,7 @@ export function InvestigationItemChatButton({
           clickEvent.stopPropagation();
           onClick();
         }}
-        size="s"
+        size="xs"
         variant="empty"
         css={css`
           && {

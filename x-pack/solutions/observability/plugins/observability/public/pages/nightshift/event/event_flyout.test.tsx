@@ -7,10 +7,18 @@
 
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import { EuiProvider } from '@elastic/eui';
+import { EuiProvider, copyToClipboard } from '@elastic/eui';
 import { I18nProvider } from '@kbn/i18n-react';
 import { EventFlyout } from './event_flyout';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
+
+jest.mock('@elastic/eui', () => {
+  const actual = jest.requireActual('@elastic/eui');
+  return {
+    ...actual,
+    copyToClipboard: jest.fn(() => true),
+  };
+});
 
 jest.mock('@kbn/kibana-react-plugin/public', () => ({
   useUiSetting: () => 'MMM D, YYYY @ HH:mm:ss.SSS',
@@ -59,12 +67,18 @@ jest.mock('../hooks/use_fetch_event_lifecycle', () => ({
 }));
 
 const mockOpenChat = jest.fn();
+const mockAddSuccessToast = jest.fn();
 
 jest.mock('../../../utils/kibana_react', () => ({
   useKibana: () => ({
     services: {
       http: { get: jest.fn(), basePath: { prepend: (path: string) => path } },
       agentBuilder: { openChat: mockOpenChat },
+      notifications: {
+        toasts: {
+          addSuccess: mockAddSuccessToast,
+        },
+      },
       charts: {
         theme: {
           useChartsBaseTheme: () => ({}),
@@ -101,6 +115,9 @@ const mockEvent: SignificantEvent = {
 describe('EventFlyout', () => {
   beforeEach(() => {
     mockOpenChat.mockClear();
+    mockAddSuccessToast.mockClear();
+    jest.mocked(copyToClipboard).mockClear();
+    window.history.pushState({}, '', '/app/observability/nightshift');
   });
 
   const renderFlyout = (props: Partial<React.ComponentProps<typeof EventFlyout>> = {}) =>
@@ -144,7 +161,7 @@ describe('EventFlyout', () => {
       },
     });
 
-    expect(screen.getByText('Investigated')).toBeInTheDocument();
+    expect(screen.getAllByText('Investigated').length).toBeGreaterThan(0);
   });
 
   it('formats the event timestamp using the dateFormat advanced setting', () => {
@@ -226,11 +243,22 @@ describe('EventFlyout', () => {
     expect(screen.queryByText('No investigation yet.')).not.toBeInTheDocument();
   });
 
+  it('copies the share URL when the share button is clicked', () => {
+    renderFlyout();
+
+    fireEvent.click(screen.getByTestId('nightshiftEventFlyoutShareUrlButton'));
+
+    expect(copyToClipboard).toHaveBeenCalledWith(expect.stringContaining('eventUuid=evt-uuid-001'));
+    expect(mockAddSuccessToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Copied link to clipboard' })
+    );
+  });
+
   it('calls onClose when flyout is closed', () => {
     const onClose = jest.fn();
     renderFlyout({ onClose });
 
-    fireEvent.click(screen.getByTestId('euiFlyoutCloseButton'));
+    fireEvent.click(screen.getByTestId('nightshiftEventFlyoutCloseButton'));
     expect(onClose).toHaveBeenCalled();
   });
 

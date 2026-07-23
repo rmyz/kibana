@@ -9,8 +9,9 @@ import type { InvestigationState } from '@kbn/significant-events-schema';
 import {
   getConclusionBody,
   getHypothesisStatusLabel,
+  getInvestigationCompleteStatusLabel,
   getInvestigationHeadline,
-  getInvestigationStatusLabel,
+  getInvestigationWorkflowStatusLabel,
   getPrimaryHypothesis,
   mapBlindSpots,
   parseInvestigationRecommendations,
@@ -46,18 +47,20 @@ Checkout deploy introduced a regression.
 };
 
 describe('investigation_presentation', () => {
-  describe('getInvestigationStatusLabel', () => {
-    it('returns Complete for complete status', () => {
-      expect(getInvestigationStatusLabel('complete')).toBe('Complete');
+  describe('getInvestigationWorkflowStatusLabel', () => {
+    it('returns Investigated or Investigating only', () => {
+      expect(getInvestigationWorkflowStatusLabel('complete')).toBe('Investigated');
+      expect(getInvestigationWorkflowStatusLabel('running')).toBe('Investigating');
+      expect(getInvestigationWorkflowStatusLabel('failed')).toBe('Investigating');
+      expect(getInvestigationWorkflowStatusLabel('loading', '2026-07-10T12:05:00Z')).toBe(
+        'Investigated'
+      );
     });
+  });
 
-    it('returns Checking hypotheses when a hypothesis is investigating', () => {
-      expect(
-        getInvestigationStatusLabel('running', {
-          summary: 'Checking causes',
-          hypotheses: [{ candidate: 'Cause A', confidence: 0.5, status: 'investigating' }],
-        })
-      ).toBe('Checking hypotheses');
+  describe('getInvestigationCompleteStatusLabel', () => {
+    it('returns Complete for the investigation flyout badge', () => {
+      expect(getInvestigationCompleteStatusLabel()).toBe('Complete');
     });
   });
 
