@@ -14,6 +14,21 @@ import { nightshiftOpacityTransition } from './nightshift_transition';
 
 const DEFAULT_MAX_SUMMARY_LENGTH = 300;
 
+const truncateSummary = (characters: readonly string[], maxLength: number): string => {
+  if (characters.length <= maxLength) {
+    return characters.join('');
+  }
+
+  let truncated = characters.slice(0, maxLength).join('');
+  const backtickCount = (truncated.match(/`/g) ?? []).length;
+  if (backtickCount % 2 !== 0) {
+    const lastBacktick = truncated.lastIndexOf('`');
+    truncated = truncated.slice(0, lastBacktick);
+  }
+
+  return `${truncated}...`;
+};
+
 export interface TruncatableSummaryProps {
   summary: string;
   maxLength?: number;
@@ -40,7 +55,7 @@ export function TruncatableSummary({
   const summaryCharacters = useMemo(() => Array.from(summary), [summary]);
   const isSummaryLong = summaryCharacters.length > maxLength;
   const displaySummary =
-    isSummaryLong && !expanded ? summaryCharacters.slice(0, maxLength).join('') + '...' : summary;
+    isSummaryLong && !expanded ? truncateSummary(summaryCharacters, maxLength) : summary;
 
   const toggleSummary = useCallback(() => {
     setExpanded((previous) => !previous);
@@ -56,16 +71,12 @@ export function TruncatableSummary({
           ${fontSize ? `font-size: ${fontSize};` : ''}
         `}
       >
-        {isSummaryLong && !expanded ? (
-          displaySummary
-        ) : (
-          <InvestigationFormattedText
-            text={displaySummary}
-            textSize={fontSize ? undefined : textSize}
-            fontSize={fontSize}
-            bold={bold}
-          />
-        )}
+        <InvestigationFormattedText
+          text={displaySummary}
+          textSize={fontSize ? undefined : textSize}
+          fontSize={fontSize}
+          bold={bold}
+        />
       </EuiText>
       {isSummaryLong && (
         // eslint-disable-next-line @elastic/eui/require-href-for-link
