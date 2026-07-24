@@ -78,10 +78,7 @@ function setLifecycle({
   refetch = jest.fn(),
 } = {}) {
   mockUseFetchEventLifecycle.mockReturnValue({
-    data:
-      isLoading && detections.length === 0
-        ? undefined
-        : { detections, discoveries: [], events: [] },
+    data: isLoading || isError ? undefined : { detections, events: [] },
     isLoading,
     isFetching: isLoading || isFetching,
     isError,
