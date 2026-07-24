@@ -29,15 +29,18 @@ import { useKibana } from '../../../../../hooks/use_kibana';
 import { isInvestigationRunning } from '../shared/investigation_status';
 
 const SECTION_TITLE = i18n.translate(
-  'xpack.streams.sigEventsTab.flyout.investigationSectionTitle',
+  'xpack.streams.sigEventsTab.flyout.investigationsSectionTitle',
   {
-    defaultMessage: 'Investigation',
+    defaultMessage: 'Investigations',
   }
 );
 
-const NO_INVESTIGATION_TEXT = i18n.translate('xpack.streams.sigEventsTab.flyout.noInvestigation', {
-  defaultMessage: 'No investigation yet.',
-});
+const NO_INVESTIGATIONS_TEXT = i18n.translate(
+  'xpack.streams.sigEventsTab.flyout.noInvestigations',
+  {
+    defaultMessage: 'No investigations yet.',
+  }
+);
 
 const OPEN_CONVERSATION_LABEL = i18n.translate(
   'xpack.streams.sigEventsTab.flyout.openConversationAriaLabel',
@@ -59,7 +62,13 @@ const formatDuration = (startedAt: string, completedAt?: string): string => {
   return moment.duration(diffMs).humanize();
 };
 
-const InvestigationRow = ({ investigation }: { investigation: SignificantEventInvestigation }) => {
+const InvestigationRow = ({
+  investigation,
+  initialIsOpen,
+}: {
+  investigation: SignificantEventInvestigation;
+  initialIsOpen: boolean;
+}) => {
   const {
     core: { http },
   } = useKibana();
@@ -86,7 +95,7 @@ const InvestigationRow = ({ investigation }: { investigation: SignificantEventIn
   return (
     <EuiAccordion
       id={accordionId}
-      initialIsOpen
+      initialIsOpen={initialIsOpen}
       data-test-subj="sigEventInvestigationRow"
       buttonContent={
         <EuiText size="xs" color="subdued">
@@ -125,7 +134,7 @@ interface EventInvestigationsProps {
 }
 
 export const EventInvestigations = ({ event }: EventInvestigationsProps) => {
-  const investigation = event.investigations?.at(-1);
+  const investigations = event.investigations ?? [];
 
   return (
     <EuiFlexGroup direction="column" gutterSize="l">
@@ -134,16 +143,21 @@ export const EventInvestigations = ({ event }: EventInvestigationsProps) => {
           <h3>{SECTION_TITLE}</h3>
         </EuiTitle>
       </EuiFlexItem>
-      {!investigation ? (
+      {investigations.length === 0 ? (
         <EuiFlexItem grow={false}>
           <EuiText size="s" color="subdued">
-            <p>{NO_INVESTIGATION_TEXT}</p>
+            <p>{NO_INVESTIGATIONS_TEXT}</p>
           </EuiText>
         </EuiFlexItem>
       ) : (
-        <EuiFlexItem grow={false}>
-          <InvestigationRow investigation={investigation} />
-        </EuiFlexItem>
+        investigations.map((investigation, index) => (
+          <EuiFlexItem key={investigation.workflow_execution_id} grow={false}>
+            <InvestigationRow
+              investigation={investigation}
+              initialIsOpen={index === investigations.length - 1}
+            />
+          </EuiFlexItem>
+        ))
       )}
     </EuiFlexGroup>
   );

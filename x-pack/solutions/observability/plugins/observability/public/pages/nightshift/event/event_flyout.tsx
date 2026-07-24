@@ -9,7 +9,6 @@ import { css } from '@emotion/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   EuiBadge,
-  EuiButtonIcon,
   EuiFlyout,
   EuiFlyoutBody,
   EuiFlyoutFooter,
@@ -19,7 +18,6 @@ import {
   EuiSpacer,
   EuiText,
   EuiTitle,
-  EuiToolTip,
   useEuiTheme,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
@@ -32,8 +30,7 @@ import { EventFlyoutChatFooter } from './event_flyout_chat_footer';
 import { InvestigationStatusBadge } from '../investigation/investigation_status_badge';
 import { TruncatableSummary } from '../common/truncatable_summary';
 import { FlyoutSectionTitle } from '../common/flyout_section_title';
-import { FlyoutShareUrlButton } from '../common/flyout_share_url_button';
-import { FlyoutToolbarHeader } from '../common/flyout_toolbar_header';
+import { useFlyoutShareUrlCustomAction } from '../common/flyout_share_url_button';
 import { buildNightshiftEventFlyoutShareUrl } from '../common/nightshift_url_params';
 import { NightshiftMarkIcon } from '../app/nightshift_mark_icon';
 import { useFormatTimestamp } from '../common/format_timestamp';
@@ -103,9 +100,19 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
     setSelectedDetectionId((current) => (current === detectionId ? undefined : detectionId));
   }, []);
 
-  const closeFlyoutLabel = i18n.translate('xpack.observability.nightshift.flyout.closeAriaLabel', {
-    defaultMessage: 'Close flyout',
-  });
+  const getShareUrl = useCallback(
+    () => buildNightshiftEventFlyoutShareUrl(event.event_uuid),
+    [event.event_uuid]
+  );
+  const shareUrlCustomAction = useFlyoutShareUrlCustomAction(getShareUrl);
+  const flyoutMenuProps = useMemo(
+    () => ({
+      title: event.title,
+      hideTitle: true,
+      customActions: [shareUrlCustomAction],
+    }),
+    [event.title, shareUrlCustomAction]
+  );
 
   return (
     <EuiFlyout
@@ -114,28 +121,10 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
       type="push"
       session="start"
       resizable
-      hideCloseButton
       aria-label={event.title}
+      flyoutMenuProps={flyoutMenuProps}
       data-test-subj="nightshiftEventFlyout"
     >
-      <FlyoutToolbarHeader>
-        <FlyoutShareUrlButton
-          getShareUrl={() => buildNightshiftEventFlyoutShareUrl(event.event_uuid)}
-          testSubj="nightshiftEventFlyoutShareUrlButton"
-        />
-        <EuiFlexItem grow={false}>
-          <EuiToolTip content={closeFlyoutLabel} disableScreenReaderOutput>
-            <EuiButtonIcon
-              iconType="cross"
-              color="text"
-              aria-label={closeFlyoutLabel}
-              data-test-subj="nightshiftEventFlyoutCloseButton"
-              onClick={onClose}
-            />
-          </EuiToolTip>
-        </EuiFlexItem>
-      </FlyoutToolbarHeader>
-
       <EuiFlyoutHeader hasBorder>
         <EuiTitle size="s">
           <h2>{event.title}</h2>

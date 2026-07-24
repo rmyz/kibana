@@ -5,25 +5,21 @@
  * 2.0.
  */
 
-import React, { useCallback } from 'react';
-import { EuiButtonIcon, EuiFlexItem, EuiToolTip, copyToClipboard } from '@elastic/eui';
+import { useCallback, useMemo } from 'react';
+import { copyToClipboard, type EuiFlyoutMenuCustomAction } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { useKibana } from '../../../utils/kibana_react';
 
-export interface FlyoutShareUrlButtonProps {
-  getShareUrl: () => string;
-  testSubj?: string;
-}
-
-export function FlyoutShareUrlButton({
-  getShareUrl,
-  testSubj = 'nightshiftFlyoutShareUrlButton',
-}: FlyoutShareUrlButtonProps): React.ReactElement {
-  const { notifications } = useKibana().services;
-
-  const shareLabel = i18n.translate('xpack.observability.nightshift.flyout.shareUrlAriaLabel', {
+export const getFlyoutShareUrlAriaLabel = (): string =>
+  i18n.translate('xpack.observability.nightshift.flyout.shareUrlAriaLabel', {
     defaultMessage: 'Copy link to this flyout',
   });
+
+export const useFlyoutShareUrlCustomAction = (
+  getShareUrl: () => string
+): EuiFlyoutMenuCustomAction => {
+  const { notifications } = useKibana().services;
+  const shareLabel = getFlyoutShareUrlAriaLabel();
 
   const onShareClick = useCallback(() => {
     const copied = copyToClipboard(getShareUrl());
@@ -36,16 +32,12 @@ export function FlyoutShareUrlButton({
     }
   }, [getShareUrl, notifications.toasts]);
 
-  return (
-    <EuiFlexItem grow={false}>
-      <EuiToolTip content={shareLabel} disableScreenReaderOutput>
-        <EuiButtonIcon
-          iconType="share"
-          aria-label={shareLabel}
-          data-test-subj={testSubj}
-          onClick={onShareClick}
-        />
-      </EuiToolTip>
-    </EuiFlexItem>
+  return useMemo(
+    () => ({
+      iconType: 'share',
+      'aria-label': shareLabel,
+      onClick: onShareClick,
+    }),
+    [onShareClick, shareLabel]
   );
-}
+};
