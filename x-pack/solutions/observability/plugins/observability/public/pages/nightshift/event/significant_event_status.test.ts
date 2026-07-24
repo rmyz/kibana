@@ -15,7 +15,9 @@ import {
   getInvestigationStatusLabel,
   getLatestInvestigation,
   getStatusColor,
+  hasRunningInvestigations,
   isEventInvestigated,
+  isInvestigationRunning,
   isNeedsActionStatus,
   isResolvedStatus,
 } from './significant_event_status';
@@ -141,5 +143,31 @@ describe('significant_event_status', () => {
     expect(isEventInvestigated(completed)).toBe(true);
     expect(isEventInvestigated(inProgress)).toBe(false);
     expect(getLatestInvestigation(completed)?.workflow_execution_id).toBe('exec-1');
+  });
+
+  it('detects running investigations for list polling', () => {
+    const running = mockEvent({
+      investigations: [
+        {
+          workflow_execution_id: 'exec-1',
+          started_at: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+    const completed = mockEvent({
+      event_uuid: 'evt-uuid-2',
+      investigations: [
+        {
+          workflow_execution_id: 'exec-2',
+          started_at: '2026-01-01T00:00:00.000Z',
+          completed_at: '2026-01-01T00:05:00.000Z',
+        },
+      ],
+    });
+
+    expect(isInvestigationRunning(running)).toBe(true);
+    expect(isInvestigationRunning(completed)).toBe(false);
+    expect(hasRunningInvestigations([running, completed])).toBe(true);
+    expect(hasRunningInvestigations([completed])).toBe(false);
   });
 });

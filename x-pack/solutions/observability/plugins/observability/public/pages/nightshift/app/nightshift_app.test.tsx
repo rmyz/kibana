@@ -366,11 +366,64 @@ describe('NightshiftApp', () => {
     expect(screen.getByText('Flyout: Deep linked event')).toBeInTheDocument();
   });
 
-  it('does not render a flyout for an unknown eventUuid URL parameter', () => {
+  it('keeps the flyout open when a refetch returns a newer event version', () => {
+    const initialEvent = mockEvent({
+      event_id: 'evt-1',
+      event_uuid: 'evt-uuid-1',
+      title: 'Investigating event',
+      investigations: [
+        {
+          workflow_execution_id: 'exec-1',
+          started_at: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+    setEvents({ events: [initialEvent] });
+    const { rerender } = renderWithIntl(<NightshiftApp />, {
+      initialEntries: ['/?eventUuid=evt-uuid-1'],
+    });
+
+    expect(screen.getByText('Flyout: Investigating event')).toBeInTheDocument();
+
+    setEvents({
+      events: [
+        mockEvent({
+          event_id: 'evt-1',
+          event_uuid: 'evt-uuid-2',
+          title: 'Investigated event',
+          investigations: [
+            {
+              workflow_execution_id: 'exec-1',
+              started_at: '2026-01-01T00:00:00.000Z',
+              completed_at: '2026-01-01T00:05:00.000Z',
+            },
+          ],
+        }),
+      ],
+    });
+    rerender(
+      <I18nProvider>
+        <MemoryRouter>
+          <NightshiftApp />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+
+    expect(screen.getByText('Flyout: Investigated event')).toBeInTheDocument();
+    expect(screen.queryByText('Significant Event not found')).not.toBeInTheDocument();
+  });
+
+  it('keeps the not-found warning visible until a valid event is selected', () => {
     setEvents({ events: [mockEvent({ event_uuid: 'evt-uuid-1' })] });
     renderWithIntl(<NightshiftApp />, { initialEntries: ['/?eventUuid=evt-unknown'] });
 
     expect(screen.queryByTestId('stubEventFlyout')).not.toBeInTheDocument();
+    expect(screen.getByText('Significant Event not found')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('nightshiftSignificantEventItem'));
+
+    expect(screen.queryByText('Significant Event not found')).not.toBeInTheDocument();
+    expect(screen.getByTestId('stubEventFlyout')).toBeInTheDocument();
   });
 
   it('ranks blast radius chips by event count descending', () => {

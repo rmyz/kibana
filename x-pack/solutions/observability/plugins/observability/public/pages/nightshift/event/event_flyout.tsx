@@ -22,6 +22,7 @@ import {
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { useInvestigationState } from '@kbn/investigation-output';
+import { useQueryClient } from '@kbn/react-query';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
 import { DetectionFlyout } from '../detection/detection_flyout';
 import { DetectionsList } from './detections_list';
@@ -30,11 +31,13 @@ import { EventFlyoutChatFooter } from './event_flyout_chat_footer';
 import { InvestigationStatusBadge } from '../investigation/investigation_status_badge';
 import { TruncatableSummary } from '../common/truncatable_summary';
 import { FlyoutSectionTitle } from '../common/flyout_section_title';
+import { isInvestigationInvestigated } from '../common/investigation_progress_status';
 import { useFlyoutShareUrlCustomAction } from '../common/flyout_share_url_button';
 import { buildNightshiftEventFlyoutShareUrl } from '../common/nightshift_url_params';
 import { NightshiftMarkIcon } from '../app/nightshift_mark_icon';
 import { useFormatTimestamp } from '../common/format_timestamp';
 import { useFetchEventLifecycle } from '../hooks/use_fetch_event_lifecycle';
+import { markEventInvestigationCompleteInCache } from '../hooks/use_fetch_significant_events';
 import { findDetectionSignal } from '../detection/resolve_detection_signal';
 import { isNeedsActionStatus } from './significant_event_status';
 import { useKibana } from '../../../utils/kibana_react';
@@ -47,6 +50,7 @@ export interface EventFlyoutProps {
 export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const formatTimestamp = useFormatTimestamp();
+  const queryClient = useQueryClient();
   const { agentBuilder, http } = useKibana().services;
   const [selectedDetectionId, setSelectedDetectionId] = useState<string>();
   const lifecycleQuery = useFetchEventLifecycle(event.event_uuid);
@@ -62,6 +66,18 @@ export function EventFlyout({ event, onClose }: EventFlyoutProps): React.ReactEl
     workflowExecutionId: latestInvestigation?.workflow_execution_id,
     isRunning: latestInvestigation != null && latestInvestigation.completed_at == null,
   });
+
+  useEffect(() => {
+    if (
+      latestInvestigation == null ||
+      latestInvestigation.completed_at != null ||
+      !isInvestigationInvestigated(investigationStatus)
+    ) {
+      return;
+    }
+
+    markEventInvestigationCompleteInCache(queryClient, event.event_uuid);
+  }, [event.event_uuid, investigationStatus, latestInvestigation, queryClient]);
 
   useEffect(() => {
     if (

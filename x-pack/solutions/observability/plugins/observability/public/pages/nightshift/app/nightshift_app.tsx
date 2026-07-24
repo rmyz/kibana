@@ -43,6 +43,11 @@ import { NIGHTSHIFT_EVENT_UUID_QUERY_PARAM } from '../common/nightshift_url_para
 // Kept in the URL so a refresh or a shared link restores the open flyout.
 const BLAST_RADIUS_QUERY_PARAM = 'blastRadius';
 
+interface SelectedEventIdentity {
+  eventId: string;
+  eventUuid: string;
+}
+
 export function NightshiftApp(): React.ReactElement {
   const { euiTheme } = useEuiTheme();
   const { agentBuilder, application } = useKibana().services;
@@ -61,9 +66,14 @@ export function NightshiftApp(): React.ReactElement {
     () => new URLSearchParams(search).get(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM) ?? undefined,
     [search]
   );
+  const [selectedEventIdentity, setSelectedEventIdentity] = useState<SelectedEventIdentity>();
   const selectedEvent = useMemo(
-    () => events.find(({ event_uuid: eventUuid }) => eventUuid === selectedEventUuid),
-    [events, selectedEventUuid]
+    () =>
+      events.find(({ event_uuid: eventUuid }) => eventUuid === selectedEventUuid) ??
+      (selectedEventIdentity && selectedEventIdentity.eventUuid === selectedEventUuid
+        ? events.find(({ event_id: eventId }) => eventId === selectedEventIdentity.eventId)
+        : undefined),
+    [events, selectedEventIdentity, selectedEventUuid]
   );
   const [eventNotFound, setEventNotFound] = useState(false);
 
@@ -86,6 +96,11 @@ export function NightshiftApp(): React.ReactElement {
 
   const handleEventClick = useCallback(
     (event: SignificantEvent) => {
+      setEventNotFound(false);
+      setSelectedEventIdentity({
+        eventId: event.event_id,
+        eventUuid: event.event_uuid,
+      });
       const params = new URLSearchParams(history.location.search);
       params.set(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM, event.event_uuid);
       history.replace({ search: params.toString() });
@@ -94,6 +109,8 @@ export function NightshiftApp(): React.ReactElement {
   );
 
   const handleFlyoutClose = useCallback(() => {
+    setEventNotFound(false);
+    setSelectedEventIdentity(undefined);
     const params = new URLSearchParams(history.location.search);
     params.delete(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM);
     history.replace({ search: params.toString() });
@@ -160,6 +177,7 @@ export function NightshiftApp(): React.ReactElement {
   useEffect(() => {
     if (selectedEventUuid && !selectedEvent && !isLoading) {
       setEventNotFound(true);
+      setSelectedEventIdentity(undefined);
       const params = new URLSearchParams(history.location.search);
       if (params.has(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM)) {
         params.delete(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM);
@@ -167,10 +185,24 @@ export function NightshiftApp(): React.ReactElement {
       }
       return;
     }
-    if (selectedEvent || !selectedEventUuid) {
+    if (selectedEvent) {
       setEventNotFound(false);
+      if (
+        selectedEventIdentity?.eventId !== selectedEvent.event_id ||
+        selectedEventIdentity?.eventUuid !== selectedEvent.event_uuid
+      ) {
+        setSelectedEventIdentity({
+          eventId: selectedEvent.event_id,
+          eventUuid: selectedEvent.event_uuid,
+        });
+      }
+      if (selectedEventUuid && selectedEvent.event_uuid !== selectedEventUuid) {
+        const params = new URLSearchParams(history.location.search);
+        params.set(NIGHTSHIFT_EVENT_UUID_QUERY_PARAM, selectedEvent.event_uuid);
+        history.replace({ search: params.toString() });
+      }
     }
-  }, [history, isLoading, selectedEvent, selectedEventUuid]);
+  }, [history, isLoading, selectedEvent, selectedEventIdentity, selectedEventUuid]);
 
   const scrollToSection = (sectionRef: React.RefObject<HTMLElement>) => {
     sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -379,7 +411,7 @@ export function NightshiftApp(): React.ReactElement {
 
       {selectedEvent && selectedEventVisible && (
         <EventFlyout
-          key={selectedEvent.event_uuid}
+          key={selectedEvent.event_id}
           event={selectedEvent}
           onClose={handleFlyoutClose}
         />

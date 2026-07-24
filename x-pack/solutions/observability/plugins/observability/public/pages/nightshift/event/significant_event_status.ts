@@ -98,6 +98,16 @@ export const getLatestInvestigation = (
 export const isEventInvestigated = (event: Pick<SignificantEvent, 'investigations'>): boolean =>
   getLatestInvestigation(event)?.completed_at != null;
 
+export const isInvestigationRunning = (
+  event: Pick<SignificantEvent, 'investigations'>
+): boolean => {
+  const latestInvestigation = getLatestInvestigation(event);
+  return latestInvestigation != null && latestInvestigation.completed_at == null;
+};
+
+export const hasRunningInvestigations = (events: SignificantEvent[]): boolean =>
+  events.some(isInvestigationRunning);
+
 export const getInvestigationStatusLabel = (
   event: Pick<SignificantEvent, 'investigations'>
 ): string => getInvestigationProgressStatusLabel(isEventInvestigated(event));

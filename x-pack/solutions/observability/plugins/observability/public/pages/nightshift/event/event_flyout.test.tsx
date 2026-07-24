@@ -9,8 +9,13 @@ import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { EuiProvider } from '@elastic/eui';
 import { I18nProvider } from '@kbn/i18n-react';
+import { QueryClient, QueryClientProvider } from '@kbn/react-query';
 import { EventFlyout } from './event_flyout';
 import type { SignificantEvent } from '@kbn/significant-events-schema';
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
 
 jest.mock('@kbn/kibana-react-plugin/public', () => ({
   useUiSetting: () => 'MMM D, YYYY @ HH:mm:ss.SSS',
@@ -111,9 +116,11 @@ describe('EventFlyout', () => {
   const renderFlyout = (props: Partial<React.ComponentProps<typeof EventFlyout>> = {}) =>
     render(
       <I18nProvider>
-        <EuiProvider>
-          <EventFlyout event={mockEvent} onClose={jest.fn()} {...props} />
-        </EuiProvider>
+        <QueryClientProvider client={queryClient}>
+          <EuiProvider>
+            <EventFlyout event={mockEvent} onClose={jest.fn()} {...props} />
+          </EuiProvider>
+        </QueryClientProvider>
       </I18nProvider>
     );
 
